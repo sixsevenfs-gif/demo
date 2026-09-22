@@ -24,23 +24,26 @@ export interface ExtractedLeadData {
 
 export async function extractBusinessFromScreenshot(
   base64Image: string,
-  filename?: string
+  filename?: string,
 ): Promise<ExtractedLeadData> {
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) throw new Error("AI_IMPORT_NOT_CONFIGURED");
   try {
-      const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
-          body: JSON.stringify({
-            contents: [
-              {
-                parts: [
-                  {
-                    text: `Analyze this Google Maps or business screenshot. Extract all visible business information into a single JSON object.
+    const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+    const response = await fetch(
+      `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-goog-api-key": apiKey,
+        },
+        body: JSON.stringify({
+          contents: [
+            {
+              parts: [
+                {
+                  text: `Analyze this Google Maps or business screenshot. Extract all visible business information into a single JSON object.
 Do NOT invent information. If a field is not visible, use null.
 Return ONLY valid JSON matching this schema:
 {
@@ -56,44 +59,59 @@ Return ONLY valid JSON matching this schema:
   "hours": string,
   "website": string
 }`,
+                },
+                {
+                  inline_data: {
+                    mime_type: "image/png",
+                    data: cleanBase64,
                   },
-                  {
-                    inline_data: {
-                      mime_type: "image/png",
-                      data: cleanBase64,
-                    },
-                  },
-                ],
-              },
-            ],
-          }),
-        }
-      );
+                },
+              ],
+            },
+          ],
+        }),
+      },
+    );
 
-      if (response.ok) {
-        const data = await response.json();
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
-        if (text) {
-          const jsonMatch = text.match(/\{[\s\S]*\}/);
-          if (jsonMatch) {
-            const parsed = JSON.parse(jsonMatch[0]);
-            return {
-              businessName: parsed.businessName || "",
-              category: parsed.category || "",
-              rating: Number.isFinite(Number(parsed.rating)) ? Number(parsed.rating) : 0,
-              reviews: Number.isFinite(Number(parsed.reviews)) ? Number(parsed.reviews) : 0,
-              phone: parsed.phone || "",
-              address: parsed.address || "",
-              city: parsed.city || "",
-              state: parsed.state || "",
-              pincode: parsed.pincode || "",
-              hours: parsed.hours || "",
-              website: parsed.website || "",
-            };
-          }
+    if (response.ok) {
+      const data = await response.json();
+      const text = data?.candidates?.[0]?.content?.parts?.[0]?.text;
+      if (text) {
+        const jsonMatch = text.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          return {
+            businessName: parsed.businessName || "",
+            category: parsed.category || "",
+            rating: Number.isFinite(Number(parsed.rating))
+              ? Number(parsed.rating)
+              : 0,
+            reviews: Number.isFinite(Number(parsed.reviews))
+              ? Number(parsed.reviews)
+              : 0,
+            phone: parsed.phone || "",
+            address: parsed.address || "",
+            city: parsed.city || "",
+            state: parsed.state || "",
+            pincode: parsed.pincode || "",
+            hours: parsed.hours || "",
+            website: parsed.website || "",
+          };
         }
       }
-  } catch { throw new Error("AI_EXTRACTION_FAILED"); }
+    } else if (response.status === 429) {
+      throw new Error("AI_RATE_LIMITED");
+    } else if (response.status === 401 || response.status === 403) {
+      throw new Error("AI_KEY_REJECTED");
+    }
+  } catch (error) {
+    if (
+      error instanceof Error &&
+      ["AI_RATE_LIMITED", "AI_KEY_REJECTED"].includes(error.message)
+    )
+      throw error;
+    throw new Error("AI_EXTRACTION_FAILED");
+  }
   throw new Error("AI_EXTRACTION_FAILED");
 }
 
@@ -107,7 +125,10 @@ export async function cleanupCallNotes(roughNotes: string): Promise<string> {
         `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
         {
           method: "POST",
-          headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey },
+          headers: {
+            "Content-Type": "application/json",
+            "x-goog-api-key": apiKey,
+          },
           body: JSON.stringify({
             contents: [
               {
@@ -124,7 +145,7 @@ Original Note: "${roughNotes}"`,
               },
             ],
           }),
-        }
+        },
       );
 
       if (response.ok) {
@@ -145,7 +166,11 @@ Original Note: "${roughNotes}"`,
 export function generateLeadSummary(lead: {
   businessName: string;
   category: string;
-  calls?: Array<{ outcome: string; notes?: string | null; callDate: Date | string }>;
+  calls?: Array<{
+    outcome: string;
+    notes?: string | null;
+    callDate: Date | string;
+  }>;
 }): string {
   const calls = lead.calls || [];
   if (calls.length === 0) {
@@ -169,21 +194,24 @@ export function getLeadOperationalInsight(lead: {
   if (lead.isDoNotCall || lead.status === "DO_NOT_CALL") {
     return {
       badge: "Do Not Call",
-      action: "Lead is on the Do Not Call register. Outreach strictly prohibited.",
+      action:
+        "Lead is on the Do Not Call register. Outreach strictly prohibited.",
     };
   }
 
   if (lead.status === "INTERESTED" || lead.status === "MEETING_SCHEDULED") {
     return {
       badge: "High Conversion Potential",
-      action: "Prepare custom agency portfolio and proposal. Ensure callback or meeting is honored promptly.",
+      action:
+        "Prepare custom agency portfolio and proposal. Ensure callback or meeting is honored promptly.",
     };
   }
 
   if (lead.status === "CALLBACK_REQUESTED" || lead.nextFollowUpDate) {
     return {
       badge: "Pending Callback",
-      action: "Review previous call notes and initiate prompt follow-up at scheduled time.",
+      action:
+        "Review previous call notes and initiate prompt follow-up at scheduled time.",
     };
   }
 

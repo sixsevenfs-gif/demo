@@ -35,6 +35,7 @@ export function AiImportModal() {
   const [assignedToId, setAssignedToId] = useState("");
   const [duplicateWarning, setDuplicateWarning] = useState<any | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [extractionError, setExtractionError] = useState("");
 
   if (!isAiImportOpen) return null;
 
@@ -44,11 +45,13 @@ export function AiImportModal() {
     setExtractedData(null);
     setDuplicateWarning(null);
     setIsEditing(false);
+    setExtractionError("");
   };
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    setExtractionError("");
 
     const reader = new FileReader();
     reader.onload = async () => {
@@ -74,9 +77,19 @@ export function AiImportModal() {
           } else {
             setDuplicateWarning(null);
           }
+        } else {
+          setImagePreview(null);
+          setExtractionError(
+            data.error ||
+              "Could not analyze this screenshot. Please try again.",
+          );
         }
       } catch (err) {
         console.error(err);
+        setImagePreview(null);
+        setExtractionError(
+          "Network error while analyzing the screenshot. Check your connection and retry.",
+        );
       } finally {
         setIsAnalyzing(false);
       }
@@ -105,7 +118,9 @@ export function AiImportModal() {
           source: "Google Maps",
           priority: "HOT",
           status: "NEW",
-          assignedToId: assignedToId || (user?.role === "CALLING_EXECUTIVE" ? user.id : null),
+          assignedToId:
+            assignedToId ||
+            (user?.role === "CALLING_EXECUTIVE" ? user.id : null),
           notes: `AI Imported from Google Maps Screenshot. Rating: ${extractedData.rating} (${extractedData.reviews} reviews)`,
           allowDuplicate: forceAllow,
         }),
@@ -146,7 +161,9 @@ export function AiImportModal() {
               <Sparkles className="w-4 h-4" />
             </div>
             <div>
-              <h3 className="font-semibold text-sm text-white">AI Screenshot Import</h3>
+              <h3 className="font-semibold text-sm text-white">
+                AI Screenshot Import
+              </h3>
               <p className="text-[11px] text-slate-400">
                 Extract leads from Google Maps, Instagram, or business listings
               </p>
@@ -170,7 +187,8 @@ export function AiImportModal() {
                   Drop screenshot here or click to browse
                 </div>
                 <div className="text-[11px] text-slate-400 mt-1">
-                  Supports Google Maps business cards, listings, mobile screenshots (.PNG, .JPG)
+                  Supports Google Maps business cards, listings, mobile
+                  screenshots (.PNG, .JPG)
                 </div>
                 <input
                   type="file"
@@ -179,6 +197,11 @@ export function AiImportModal() {
                   className="hidden"
                 />
               </label>
+              {extractionError && (
+                <div className="rounded-xl border border-rose-500/30 bg-rose-500/10 p-3 text-xs text-rose-300">
+                  {extractionError}
+                </div>
+              )}
             </div>
           ) : null}
 
@@ -188,9 +211,12 @@ export function AiImportModal() {
               <div className="w-12 h-12 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-400 animate-spin">
                 <Sparkles className="w-6 h-6" />
               </div>
-              <div className="text-sm font-semibold text-white">Analyzing Screenshot with AI...</div>
+              <div className="text-sm font-semibold text-white">
+                Analyzing Screenshot with AI...
+              </div>
               <div className="text-xs text-slate-400">
-                Extracting business name, rating, reviews, phone number, and address
+                Extracting business name, rating, reviews, phone number, and
+                address
               </div>
             </div>
           )}
@@ -227,7 +253,9 @@ export function AiImportModal() {
                   <AlertTriangle className="w-4 h-4 shrink-0 mt-0.5" />
                   <div className="flex-1">
                     <span className="font-bold">Duplicate Notice: </span>
-                    Phone number already exists in your database ({duplicateWarning.businessName} - {duplicateWarning.status}).
+                    Phone number already exists in your database (
+                    {duplicateWarning.businessName} - {duplicateWarning.status}
+                    ).
                   </div>
                   <button
                     type="button"
@@ -249,47 +277,67 @@ export function AiImportModal() {
                 {isEditing ? (
                   <div className="space-y-2.5">
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Business Name</label>
+                      <label className="block text-[11px] text-slate-400 mb-1">
+                        Business Name
+                      </label>
                       <input
                         type="text"
                         value={extractedData.businessName}
                         onChange={(e) =>
-                          setExtractedData({ ...extractedData, businessName: e.target.value })
+                          setExtractedData({
+                            ...extractedData,
+                            businessName: e.target.value,
+                          })
                         }
                         className="w-full bg-[#12141C] border border-[#272E44] rounded-lg p-2 text-xs text-white"
                       />
                     </div>
                     <div className="grid grid-cols-2 gap-2">
                       <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Category</label>
+                        <label className="block text-[11px] text-slate-400 mb-1">
+                          Category
+                        </label>
                         <input
                           type="text"
                           value={extractedData.category}
                           onChange={(e) =>
-                            setExtractedData({ ...extractedData, category: e.target.value })
+                            setExtractedData({
+                              ...extractedData,
+                              category: e.target.value,
+                            })
                           }
                           className="w-full bg-[#12141C] border border-[#272E44] rounded-lg p-2 text-xs text-white"
                         />
                       </div>
                       <div>
-                        <label className="block text-[11px] text-slate-400 mb-1">Phone</label>
+                        <label className="block text-[11px] text-slate-400 mb-1">
+                          Phone
+                        </label>
                         <input
                           type="text"
                           value={extractedData.phone}
                           onChange={(e) =>
-                            setExtractedData({ ...extractedData, phone: e.target.value })
+                            setExtractedData({
+                              ...extractedData,
+                              phone: e.target.value,
+                            })
                           }
                           className="w-full bg-[#12141C] border border-[#272E44] rounded-lg p-2 text-xs text-white"
                         />
                       </div>
                     </div>
                     <div>
-                      <label className="block text-[11px] text-slate-400 mb-1">Address</label>
+                      <label className="block text-[11px] text-slate-400 mb-1">
+                        Address
+                      </label>
                       <input
                         type="text"
                         value={extractedData.address}
                         onChange={(e) =>
-                          setExtractedData({ ...extractedData, address: e.target.value })
+                          setExtractedData({
+                            ...extractedData,
+                            address: e.target.value,
+                          })
                         }
                         className="w-full bg-[#12141C] border border-[#272E44] rounded-lg p-2 text-xs text-white"
                       />
@@ -298,7 +346,9 @@ export function AiImportModal() {
                 ) : (
                   <div className="space-y-2.5 divide-y divide-[#1A1D28]">
                     <div className="flex justify-between items-center pb-1">
-                      <span className="text-slate-400 font-medium">Business Name</span>
+                      <span className="text-slate-400 font-medium">
+                        Business Name
+                      </span>
                       <span className="font-bold text-white text-sm">
                         {extractedData.businessName}
                       </span>
@@ -306,7 +356,9 @@ export function AiImportModal() {
 
                     <div className="flex justify-between items-center pt-2">
                       <span className="text-slate-400">Category</span>
-                      <span className="text-slate-200">{extractedData.category}</span>
+                      <span className="text-slate-200">
+                        {extractedData.category}
+                      </span>
                     </div>
 
                     <div className="flex justify-between items-center pt-2">
@@ -390,7 +442,9 @@ export function AiImportModal() {
               className="px-6 py-2.5 bg-white hover:bg-slate-200 text-black rounded-lg text-xs font-bold transition-all shadow active:scale-95 disabled:opacity-50 flex items-center gap-1.5"
             >
               <Sparkles className="w-3.5 h-3.5 text-black" />
-              <span>{isSaving ? "Saving..." : "+ Create Lead from This Data"}</span>
+              <span>
+                {isSaving ? "Saving..." : "+ Create Lead from This Data"}
+              </span>
             </button>
           </div>
         )}
