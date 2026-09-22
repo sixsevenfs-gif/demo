@@ -100,6 +100,15 @@ export default function ExecutiveDashboard() {
       );
   useEffect(() => {
     void load();
+    const refreshTimer = window.setInterval(() => {
+      void load();
+    }, 15_000);
+    const refreshOnFocus = () => void load();
+    window.addEventListener("focus", refreshOnFocus);
+    return () => {
+      window.clearInterval(refreshTimer);
+      window.removeEventListener("focus", refreshOnFocus);
+    };
   }, []);
   useEffect(() => {
     if (!isLoading && !user) window.location.replace("/login");
@@ -516,7 +525,13 @@ export default function ExecutiveDashboard() {
         ))}
       </div>
       {message && !outcome && (
-        <p className={message.includes("saved") ? "text-sm text-emerald-400" : "text-sm text-rose-400"}>
+        <p
+          className={
+            message.includes("saved")
+              ? "text-sm text-emerald-400"
+              : "text-sm text-rose-400"
+          }
+        >
           {message}
         </p>
       )}
@@ -589,12 +604,20 @@ export default function ExecutiveDashboard() {
         </section>
       ) : (
         <section className="rounded-2xl border border-[#1E2333] p-8 text-center">
-          <p className="text-slate-300">You’re all caught up. No leads are currently available to call.</p>
+          <p className="text-slate-300">
+            You’re all caught up. No leads are currently available to call.
+          </p>
           <div className="mt-4 flex justify-center gap-3">
-            <a href="/executive/leads" className="rounded-lg border border-[#293042] px-4 py-2 text-sm font-semibold text-slate-200">
+            <a
+              href="/executive/leads"
+              className="rounded-lg border border-[#293042] px-4 py-2 text-sm font-semibold text-slate-200"
+            >
               View My Leads
             </a>
-            <a href="/executive/follow-ups" className="rounded-lg border border-[#293042] px-4 py-2 text-sm font-semibold text-slate-200">
+            <a
+              href="/executive/follow-ups"
+              className="rounded-lg border border-[#293042] px-4 py-2 text-sm font-semibold text-slate-200"
+            >
               View Follow-Ups
             </a>
           </div>
