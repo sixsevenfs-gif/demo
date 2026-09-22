@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Gemini free-tier limit reached. Wait a minute and retry; if it persists, wait for the quota reset or use a billed Gemini API project.",
+            "All configured Gemini API keys are rate-limited. Add another key or retry after the quota resets.",
         },
         { status: 429 },
       );
@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
       return NextResponse.json(
         {
           error:
-            "Gemini API key was rejected. Check GEMINI_API_KEY in Vercel environment variables.",
+            "All configured Gemini API keys were rejected. Check GEMINI_API_KEY and GEMINI_API_KEY_BACKUP in Vercel environment variables.",
         },
         { status: 503 },
       );

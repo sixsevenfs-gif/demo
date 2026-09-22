@@ -22,14 +22,24 @@ export interface ExtractedLeadData {
   notes?: string;
 }
 
-export async function extractBusinessFromScreenshot(
-  base64Image: string,
-  filename?: string,
-): Promise<ExtractedLeadData> {
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (!apiKey) throw new Error("AI_IMPORT_NOT_CONFIGURED");
-  try {
-    const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+function getGeminiApiKeys(): string[] {
+  const keys = [process.env.GEMINI_API_KEY, process.env.GEMINI_API_KEY_BACKUP];
+
+  for (let index = 2; ; index += 1) {
+    const key = process.env[`GEMINI_API_KEY_${index}`];
+    if (!key) break;
+    keys.push(key);
+  }
+
+  return keys.filter((key): key is string => Boolean(key?.trim()));
+}
+
+async function generateGeminiContent(body: object): Promise<Response> {
+  const apiKeys = getGeminiApiKeys();
+  if (apiKeys.length === 0) throw new Error("AI_IMPORT_NOT_CONFIGURED");
+
+  let lastResponse: Response | null = null;
+  for (const apiKey of apiKeys) {
     const response = await fetch(
       `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
       {
@@ -38,7 +48,25 @@ export async function extractBusinessFromScreenshot(
           "Content-Type": "application/json",
           "x-goog-api-key": apiKey,
         },
-        body: JSON.stringify({
+        body: JSON.stringify(body),
+      },
+    );
+
+    if (response.ok) return response;
+    lastResponse = response;
+    if (![401, 403, 429].includes(response.status)) return response;
+  }
+
+  return lastResponse!;
+}
+
+export async function extractBusinessFromScreenshot(
+  base64Image: string,
+  filename?: string,
+): Promise<ExtractedLeadData> {
+  try {
+    const cleanBase64 = base64Image.replace(/^data:image\/\w+;base64,/, "");
+    const response = await generateGeminiContent({
           contents: [
             {
               parts: [
@@ -69,9 +97,7 @@ Return ONLY valid JSON matching this schema:
               ],
             },
           ],
-        }),
-      },
-    );
+        });
 
     if (response.ok) {
       const data = await response.json();
@@ -118,18 +144,9 @@ Return ONLY valid JSON matching this schema:
 export async function cleanupCallNotes(roughNotes: string): Promise<string> {
   if (!roughNotes || roughNotes.trim().length === 0) return "";
 
-  const apiKey = process.env.GEMINI_API_KEY;
-  if (apiKey) {
+  if (getGeminiApiKeys().length > 0) {
     try {
-      const response = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-3.6-flash:generateContent`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "x-goog-api-key": apiKey,
-          },
-          body: JSON.stringify({
+      const response = await generateGeminiContent({
             contents: [
               {
                 parts: [
@@ -144,9 +161,7 @@ Original Note: "${roughNotes}"`,
                 ],
               },
             ],
-          }),
-        },
-      );
+          });
 
       if (response.ok) {
         const data = await response.json();
