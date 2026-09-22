@@ -1,0 +1,268 @@
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+model User {
+  id           String     @id @default(auto()) @map("_id") @db.ObjectId
+  name         String
+  email        String     @unique
+  passwordHash String
+  phone        String?
+  role         String     @default("CALLING_EXECUTIVE") // "ADMIN" | "CALLING_EXECUTIVE"
+  status       String     @default("ACTIVE")    // "ACTIVE" | "INACTIVE"
+  dailyTarget  Int        @default(50)
+  avatar       String?
+  assignedLeads Lead[]    @relation("AssignedLeads")
+  createdLeads  Lead[]    @relation("CreatedLeads")
+  calls         Call[]
+  attachments   Attachment[]
+  followUps     FollowUp[]
+  activities    Activity[]
+  auditLogs     AuditLog[]
+  meetings      Meeting[]
+  sentNotes     InternalNote[] @relation("SentNotes")
+  noticeReceipts NoticeReceipt[]
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+}
+
+model Lead {
+  id              String      @id @default(auto()) @map("_id") @db.ObjectId
+  businessName    String
+  contactPerson   String?
+  phone           String
+  normalizedPhone String
+  altPhone        String?
+  whatsappNumber  String?
+  email           String?
+  website         String?
+  category        String      @default("General Business")
+  subcategory     String?
+  platform        String?
+  googleRating    Float?
+  reviewCount     Int?        @default(0)
+  address         String?
+  area            String?
+  city            String?
+  state           String?
+  pincode         String?
+  mapsUrl         String?
+  businessHours   String?
+  imageUrl        String?
+
+  source          String      @default("Google Maps") // Google Maps, Instagram, Facebook, Referral, Website, Manual, Imported, Other
+  status          String      @default("NEW")         // NEW, UNASSIGNED, ASSIGNED, CALL_PENDING, ATTEMPTED, CONNECTED, INTERESTED, FOLLOW_UP, CALLBACK_REQUESTED, MEETING_SCHEDULED, PROPOSAL_SENT, NEGOTIATION, WON, NOT_INTERESTED, NO_ANSWER, BUSY, SWITCHED_OFF, WRONG_NUMBER, ALREADY_HAS_AGENCY, DO_NOT_CALL, CLOSED
+  priority        String      @default("NORMAL")      // HOT, WARM, NORMAL, COLD
+  
+  isDoNotCall     Boolean     @default(false)
+  dncReason       String?
+  dncDate         DateTime?
+  dncMarkedBy     String?
+
+  assignedToId    String?     @db.ObjectId
+  assignedTo      User?       @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  createdById     String?     @db.ObjectId
+  createdBy       User?       @relation("CreatedLeads", fields: [createdById], references: [id])
+
+  lastCallDate     DateTime?
+  lastCallOutcome  String?
+  callCount        Int         @default(0)
+  nextFollowUpDate DateTime?
+
+  tags            String?
+  isDeleted       Boolean     @default(false)
+  notes           String?
+
+  calls           Call[]
+  attachments     Attachment[]
+  followUps       FollowUp[]
+  activities      Activity[]
+  meetings        Meeting[]
+  internalNotes   InternalNote[]
+
+  createdAt       DateTime    @default(now())
+  updatedAt       DateTime    @updatedAt
+
+  @@index([normalizedPhone])
+  @@index([status])
+  @@index([assignedToId])
+  @@index([nextFollowUpDate])
+  @@index([createdAt])
+}
+
+model Call {
+  id            String    @id @default(auto()) @map("_id") @db.ObjectId
+  leadId        String    @db.ObjectId
+  lead          Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  executiveId   String    @db.ObjectId
+  executive     User      @relation(fields: [executiveId], references: [id])
+  callDate      DateTime  @default(now())
+  durationSeconds Int     @default(0)
+  outcome       String    // Connected - Interested, Connected - Call Later, Connected - Meeting Requested, etc.
+  notes         String?
+  originalNotes String?   // Before AI cleanup
+  answeredStatus String?
+  clientConversationSummary String?
+  executiveNote String?
+  whatsappSentType String?
+  whatsappNote String?
+  outcomeReason String?
+  followUpNote String?
+  demoSent Boolean?
+  requiresFollowUp Boolean @default(false)
+  followUpDate  String?   // YYYY-MM-DD
+  followUpTime  String?   // e.g. 16:00
+  meetingDate   String?
+  meetingTime   String?
+  createdAt     DateTime  @default(now())
+  attachments   Attachment[]
+
+  @@index([leadId])
+  @@index([executiveId])
+  @@index([callDate])
+}
+
+model Attachment {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  leadId      String   @db.ObjectId
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  callId      String?  @db.ObjectId
+  call        Call?    @relation(fields: [callId], references: [id], onDelete: Cascade)
+  executiveId String   @db.ObjectId
+  executive   User     @relation(fields: [executiveId], references: [id])
+  type        String
+  fileId      String   @db.ObjectId
+  filename    String
+  mimeType    String
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([callId])
+  @@index([executiveId])
+}
+
+model Notice {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  title     String
+  message   String
+  priority  String   @default("NORMAL")
+  targetIds String[] @db.ObjectId
+  expiresAt DateTime?
+  requireAcknowledgement Boolean @default(false)
+  createdById String? @db.ObjectId
+  receipts NoticeReceipt[]
+  createdAt DateTime @default(now())
+}
+
+model NoticeReceipt {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  noticeId  String   @db.ObjectId
+  notice    Notice   @relation(fields: [noticeId], references: [id], onDelete: Cascade)
+  userId    String   @db.ObjectId
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  readAt    DateTime?
+  acknowledgedAt DateTime?
+  createdAt DateTime @default(now())
+
+  @@unique([noticeId, userId])
+  @@index([userId])
+}
+
+model InternalNote {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  senderId  String   @db.ObjectId
+  sender    User     @relation("SentNotes", fields: [senderId], references: [id], onDelete: Cascade)
+  leadId    String?  @db.ObjectId
+  lead      Lead?    @relation(fields: [leadId], references: [id], onDelete: SetNull)
+  type      String   @default("GENERAL_NOTE")
+  priority  String   @default("NORMAL")
+  subject   String
+  message   String
+  status    String   @default("OPEN")
+  adminReply String?
+  resolvedAt DateTime?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([senderId])
+  @@index([leadId])
+  @@index([status])
+}
+
+model FollowUp {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  leadId      String    @db.ObjectId
+  lead        Lead      @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  executiveId String    @db.ObjectId
+  executive   User      @relation(fields: [executiveId], references: [id])
+  scheduledAt DateTime
+  status      String    @default("PENDING") // PENDING, COMPLETED, RESCHEDULED, CANCELLED
+  notes       String?
+  completedAt DateTime?
+  createdAt   DateTime  @default(now())
+
+  @@index([leadId])
+  @@index([executiveId])
+  @@index([scheduledAt])
+  @@index([status])
+}
+
+model Meeting {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  leadId      String   @db.ObjectId
+  lead        Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  executiveId String   @db.ObjectId
+  executive   User     @relation(fields: [executiveId], references: [id])
+  scheduledAt DateTime
+  notes       String?
+  status      String   @default("BOOKED") // BOOKED | COMPLETED | CANCELLED
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([executiveId])
+  @@index([scheduledAt])
+}
+
+model Activity {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  leadId      String?  @db.ObjectId
+  lead        Lead?    @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  userId      String?  @db.ObjectId
+  user        User?    @relation(fields: [userId], references: [id])
+  userName    String   @default("System")
+  type        String   // CALL_MADE, STATUS_CHANGED, LEAD_CREATED, FOLLOW_UP_SCHEDULED, etc.
+  description String
+  metadata    String?
+  createdAt   DateTime @default(now())
+
+  @@index([leadId])
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model AuditLog {
+  id         String   @id @default(auto()) @map("_id") @db.ObjectId
+  userId     String?  @db.ObjectId
+  user       User?    @relation(fields: [userId], references: [id])
+  userName   String   @default("System")
+  action     String   // LEAD_CREATED, LEAD_DELETED, STATUS_CHANGED, DNC_APPLIED, etc.
+  entityType String   // Lead, User, Call, Setting
+  entityId   String
+  details    String?
+  createdAt  DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+model Setting {
+  id        String   @id @default(auto()) @map("_id") @db.ObjectId
+  key       String   @unique
+  value     String
+  updatedAt DateTime @updatedAt
+}
