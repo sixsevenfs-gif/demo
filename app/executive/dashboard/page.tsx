@@ -19,6 +19,7 @@ const buttons: Record<string, string> = {
   NOT_INTERESTED: "Save as Not Interested",
   WRONG_NUMBER: "Mark Wrong Number",
 };
+const progressLabels: Record<string, string> = { callsDone: "Calls done", callsPending: "Calls pending", interested: "Interested", followUps: "Follow-ups", meetings: "Meetings" };
 const field =
   "w-full rounded-lg border border-[#293042] bg-[#0D0F17] p-2.5 text-sm text-white";
 const infoOptions = [
@@ -518,7 +519,7 @@ export default function ExecutiveDashboard() {
           </p>
         </div>
       </div>
-      <div className="grid grid-cols-4 gap-2">
+      <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
         {Object.entries(data.progress).map(([k, v]) => (
           <div
             key={k}
@@ -526,7 +527,7 @@ export default function ExecutiveDashboard() {
           >
             <b>{String(v)}</b>
             <p className="text-[10px] text-slate-400 mt-1">
-              {k.replace(/([A-Z])/g, " $1")}
+              {progressLabels[k] || k.replace(/([A-Z])/g, " $1")}
             </p>
           </div>
         ))}
