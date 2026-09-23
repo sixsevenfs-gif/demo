@@ -310,23 +310,19 @@ export default function ExecutiveDashboard() {
   );
   function OutcomeForm() {
     if (!outcome) return null;
-    const common = <CallProof />;
+    const common = CallProof();
     if (outcome === "NO_ANSWER")
       return (
         <>
-          <CallProof />
+          {CallProof()}
           <textarea
             value={summary}
             onChange={(e) => setSummary(e.target.value)}
             placeholder="Attempt note (optional): Rang but no answer."
             className={field}
           />
-          <YesNo
-            label="Retry / Follow-Up?"
-            value={followUp}
-            setValue={setFollowUp}
-          />
-          {followUp && <FollowFields />}
+          {YesNo({ label: "Retry / Follow-Up?", value: followUp, setValue: setFollowUp })}
+          {followUp && FollowFields()}
         </>
       );
     if (outcome === "WRONG_NUMBER")
@@ -351,21 +347,17 @@ export default function ExecutiveDashboard() {
               This lead will be excluded from future calling queues.
             </p>
           )}
-          <Summary />
+          {Summary({})}
           {common}
         </>
       );
     if (outcome === "CALL_LATER")
       return (
         <>
-          <Summary placeholder="Owner was busy and asked me to call again after 5 PM." />
+          {Summary({ placeholder: "Owner was busy and asked me to call again after 5 PM." })}
           {common}
-          <FollowFields />
-          <YesNo
-            label="Did you send anything on WhatsApp?"
-            value={whatsapp}
-            setValue={setWhatsapp}
-          />
+          {FollowFields()}
+          {YesNo({ label: "Did you send anything on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
           {whatsapp && (
             <>
               <select
@@ -378,7 +370,7 @@ export default function ExecutiveDashboard() {
                   <option key={x}>{x}</option>
                 ))}
               </select>
-              <WhatsAppUpload />
+              {WhatsAppUpload()}
             </>
           )}
         </>
@@ -386,14 +378,10 @@ export default function ExecutiveDashboard() {
     if (outcome === "NEED_MORE_INFORMATION")
       return (
         <>
-          <Summary />
+          {Summary({})}
           {common}
           {select(infoOptions, "What information does the client need? *")}
-          <YesNo
-            label="Did you send information on WhatsApp?"
-            value={whatsapp}
-            setValue={setWhatsapp}
-          />
+          {YesNo({ label: "Did you send information on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
           {whatsapp && (
             <>
               <select
@@ -406,21 +394,17 @@ export default function ExecutiveDashboard() {
                   <option key={x}>{x}</option>
                 ))}
               </select>
-              <WhatsAppUpload />
+              {WhatsAppUpload()}
             </>
           )}
-          <YesNo
-            label="Follow-Up Needed?"
-            value={followUp}
-            setValue={setFollowUp}
-          />
-          {followUp && <FollowFields />}
+          {YesNo({ label: "Follow-Up Needed?", value: followUp, setValue: setFollowUp })}
+          {followUp && FollowFields()}
         </>
       );
     if (outcome === "DEMO_REQUESTED")
       return (
         <>
-          <Summary />
+          {Summary({})}
           {common}
           <select
             value={whatsappType}
@@ -432,20 +416,20 @@ export default function ExecutiveDashboard() {
               <option key={x}>{x}</option>
             ))}
           </select>
-          <YesNo label="Demo Sent?" value={demoSent} setValue={setDemoSent} />
+          {YesNo({ label: "Demo Sent?", value: demoSent, setValue: setDemoSent })}
           {!demoSent && (
             <p className="text-amber-300 text-sm">
               This call will be saved as Demo Pending.
             </p>
           )}
-          <WhatsAppUpload />
-          <FollowFields />
+          {WhatsAppUpload()}
+          {FollowFields()}
         </>
       );
     if (outcome === "MEETING_REQUIRED")
       return (
         <>
-          <Summary />
+          {Summary({})}
           {common}
           <div className="grid grid-cols-2 gap-3">
             <input
@@ -461,11 +445,7 @@ export default function ExecutiveDashboard() {
               className={field}
             />
           </div>
-          <YesNo
-            label="Was meeting information shared on WhatsApp?"
-            value={whatsapp}
-            setValue={setWhatsapp}
-          />
+          {YesNo({ label: "Was meeting information shared on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
           {whatsapp && (
             <>
               <input
@@ -474,27 +454,19 @@ export default function ExecutiveDashboard() {
                 placeholder="What was shared?"
                 className={field}
               />
-              <WhatsAppUpload />
+              {WhatsAppUpload()}
             </>
           )}
         </>
       );
     return (
       <>
-        <Summary />
+        {Summary({})}
         {common}
-        <YesNo
-          label="Demo sent on WhatsApp?"
-          value={whatsapp}
-          setValue={setWhatsapp}
-        />
-        {whatsapp && <WhatsAppUpload />}
-        <YesNo
-          label="Follow-Up Needed?"
-          value={followUp}
-          setValue={setFollowUp}
-        />
-        {followUp && <FollowFields />}
+        {YesNo({ label: "Demo sent on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
+        {whatsapp && WhatsAppUpload()}
+        {YesNo({ label: "Follow-Up Needed?", value: followUp, setValue: setFollowUp })}
+        {followUp && FollowFields()}
       </>
     );
   }
@@ -583,7 +555,7 @@ export default function ExecutiveDashboard() {
           </div>
           {outcome && (
             <div className="space-y-4 animate-in fade-in slide-in-from-top-2">
-              <OutcomeForm />
+              {OutcomeForm()}
               {message && (
                 <p
                   className={
