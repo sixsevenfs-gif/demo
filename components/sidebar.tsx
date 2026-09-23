@@ -45,6 +45,7 @@ export function Sidebar() {
     { name: "Home", href: "/executive/dashboard", icon: LayoutDashboard },
     { name: "My Leads", href: "/executive/leads", icon: Users },
     { name: "Scripts", href: "/executive/scripts", icon: FileText },
+    { name: "Resources", href: "/executive/resources", icon: Link2 },
     { name: "Follow-Ups", href: "/executive/follow-ups", icon: Calendar },
     { name: "Call History", href: "/executive/history", icon: Clock },
     { name: "Impo Note", href: "/executive/important-notes", icon: Bell },
