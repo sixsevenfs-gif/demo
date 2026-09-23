@@ -83,8 +83,9 @@ export default function ExecutiveDashboard() {
   const [whatsappProof, setWhatsappProof] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
-  const load = () =>
-    fetch("/api/dashboard")
+  const load = () => {
+    const requestedLeadId = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("leadId") || "";
+    return fetch(`/api/dashboard${requestedLeadId ? `?leadId=${requestedLeadId}` : ""}`)
       .then(async (r) => {
         if (r.status === 401) {
           window.location.replace("/login");
@@ -101,6 +102,7 @@ export default function ExecutiveDashboard() {
           "Could not load your calling queue. Please refresh or sign in again.",
         ),
       );
+  };
   useEffect(() => {
     void load();
     const refreshTimer = window.setInterval(() => {

@@ -1,8 +1,8 @@
-import { NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
@@ -22,7 +22,9 @@ export async function GET() {
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } }, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
         prisma.followUp.findMany({ where: { executiveId: user.id, status: "PENDING", scheduledAt: { lte: end } }, include: { lead: { select: { id: true, businessName: true, phone: true } } }, orderBy: { scheduledAt: "asc" }, take: 20 }),
       ]);
-      return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead: dueNextLead || freshNextLead, followUps: dueFollowUps });
+      const requestedLeadId = new URL(req.url).searchParams.get("leadId");
+      const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...scope, isDoNotCall: false }, include: leadInclude }) : null;
+      return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead: requestedLead || dueNextLead || freshNextLead, followUps: dueFollowUps });
     }
     const [totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, unassigned, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
       prisma.lead.count({ where: { isDeleted: false } }),
