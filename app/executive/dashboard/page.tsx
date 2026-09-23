@@ -125,8 +125,10 @@ export default function ExecutiveDashboard() {
     setOutcome(value);
     setSummary("");
     setReason("");
+    const callbackAt = new Date(Date.now() + 5 * 60 * 60 * 1000);
     setFollowUp(value === "CALL_LATER");
-    setFollowDate("");
+    setFollowDate(value === "CALL_LATER" ? callbackAt.toISOString().slice(0, 10) : "");
+    setFollowTime(value === "CALL_LATER" ? callbackAt.toTimeString().slice(0, 5) : "11:00");
     setFollowNote("");
     setMeetingDate("");
     setMeetingNote("");

@@ -18,6 +18,7 @@ export async function GET(req: NextRequest) {
     const platform = searchParams.get("platform");
     const isDoNotCall = searchParams.get("isDoNotCall");
     const view = searchParams.get("view"); // "queue" or "all"
+    const includeAllCalls = searchParams.get("includeCalls") === "all";
     const limit = parseInt(searchParams.get("limit") || "100", 10);
     const page = parseInt(searchParams.get("page") || "1", 10);
 
@@ -91,11 +92,13 @@ export async function GET(req: NextRequest) {
           },
           calls: {
             orderBy: { callDate: "desc" },
-            take: 1,
+            take: includeAllCalls ? 100 : 1,
             select: {
+              id: true,
               outcome: true,
               callDate: true,
               notes: true,
+              clientConversationSummary: true,
             },
           },
         },
