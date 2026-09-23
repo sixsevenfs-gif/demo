@@ -16,7 +16,9 @@ export async function GET() {
         prisma.followUp.count({ where: { executiveId: user.id, status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
         prisma.meeting.count({ where: { executiveId: user.id, status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, nextFollowUpDate: { lte: now }, status: { in: ["CALLBACK_REQUESTED", "NO_ANSWER", "FOLLOW_UP", "INTERESTED"] } }, orderBy: { nextFollowUpDate: "asc" }, include: leadInclude }),
-        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, nextFollowUpDate: null, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } }, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
+        // Imported Mongo records may have an unset (rather than explicit null)
+        // follow-up field. Assigned leads must still appear in the home queue.
+        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } }, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
         prisma.followUp.findMany({ where: { executiveId: user.id, status: "PENDING", scheduledAt: { lte: end } }, include: { lead: { select: { id: true, businessName: true, phone: true } } }, orderBy: { scheduledAt: "asc" }, take: 20 }),
       ]);
       return NextResponse.json({ role: user.role, progress: { callsDone, interested, followUps, meetings }, nextLead: dueNextLead || freshNextLead, followUps: dueFollowUps });

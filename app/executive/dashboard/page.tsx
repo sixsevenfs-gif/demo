@@ -1,6 +1,7 @@
 "use client";
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/context/app-context";
+import { LeadToolkit } from "@/components/executive/lead-toolkit";
 
 const outcomes = [
   ["INTERESTED", "Interested"],
@@ -63,6 +64,7 @@ const wrongReasons = [
 export default function ExecutiveDashboard() {
   const { user, isLoading } = useApp();
   const [data, setData] = useState<any>();
+  const [toolkit, setToolkit] = useState<any>();
   const [outcome, setOutcome] = useState("");
   const [summary, setSummary] = useState("");
   const [reason, setReason] = useState("");
@@ -110,6 +112,11 @@ export default function ExecutiveDashboard() {
       window.removeEventListener("focus", refreshOnFocus);
     };
   }, []);
+  useEffect(() => {
+    const leadId = data?.nextLead?.id;
+    if (!leadId) { setToolkit(undefined); return; }
+    fetch(`/api/leads/${leadId}/toolkit`).then((response) => response.ok ? response.json() : null).then(setToolkit);
+  }, [data?.nextLead?.id]);
   useEffect(() => {
     if (!isLoading && !user) window.location.replace("/login");
   }, [isLoading, user]);
@@ -563,6 +570,7 @@ export default function ExecutiveDashboard() {
               WhatsApp
             </a>
           </div>
+          {toolkit && <LeadToolkit lead={lead} toolkit={toolkit} refresh={load} />}
           <div>
             <p className="mb-2 text-sm font-semibold">Call Result *</p>
             <div className="grid grid-cols-2 gap-2">
