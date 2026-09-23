@@ -26,11 +26,12 @@ import { getTelLink, getWhatsAppLink } from "@/lib/phone";
 
 export default function LeadsPage() {
   const router = useRouter();
-  const { user, allUsers, setQuickAddOpen, setAiImportOpen, setOutcomeModalLead, reloadKey } = useApp();
+  const { user, setQuickAddOpen, setAiImportOpen, setOutcomeModalLead, reloadKey } = useApp();
 
   const [leads, setLeads] = useState<any[]>([]);
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
+  const [activeExecutives, setActiveExecutives] = useState<any[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -71,6 +72,19 @@ export default function LeadsPage() {
   useEffect(() => {
     fetchLeads();
   }, [search, statusFilter, priorityFilter, execFilter, reloadKey]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    const loadExecutives = async () => {
+      const response = await fetch("/api/executives", { cache: "no-store" });
+      if (!response.ok) return;
+      const data = await response.json();
+      setActiveExecutives((data.executives || []).filter((executive: any) => executive.status === "ACTIVE"));
+    };
+    void loadExecutives();
+    const refresh = window.setInterval(() => void loadExecutives(), 15_000);
+    return () => window.clearInterval(refresh);
+  }, [isAdmin, reloadKey]);
 
   // Bulk selection toggles
   const handleSelectAll = () => {
@@ -299,9 +313,7 @@ export default function LeadsPage() {
             >
               <option value="ALL">All Executives</option>
               <option value="unassigned">Unassigned Only</option>
-              {allUsers
-                .filter((u) => u.role === "CALLING_EXECUTIVE")
-                .map((e) => (
+              {activeExecutives.map((e) => (
                   <option key={e.id} value={e.id}>
                     {e.name}
                   </option>
@@ -357,9 +369,7 @@ export default function LeadsPage() {
                 className="bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none"
               >
                 <option value="">Choose Executive...</option>
-                {allUsers
-                .filter((u) => u.role === "CALLING_EXECUTIVE")
-                  .map((e) => (
+                {activeExecutives.map((e) => (
                     <option key={e.id} value={e.id}>
                       {e.name}
                     </option>
