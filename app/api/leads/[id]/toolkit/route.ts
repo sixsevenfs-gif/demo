@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
+import { categoryMatches, categoryMatchScore } from "@/lib/category";
 
 async function permitted(id: string) {
   const user = await getCurrentUser();
@@ -13,9 +14,12 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   const { user, lead } = await permitted(params.id);
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
   if (!lead) return NextResponse.json({ error: "Lead not found or unavailable" }, { status: 404 });
-  const script = lead.assignedScript || await prisma.callingScript.findFirst({ where: { category: lead.category, status: "ACTIVE", isDefaultForCategory: true }, include: { objections: { orderBy: { position: "asc" } } } }) || await prisma.callingScript.findFirst({ where: { category: "General Business", status: "ACTIVE", isDefaultForCategory: true }, include: { objections: { orderBy: { position: "asc" } } } });
-  const resources = await prisma.resource.findMany({ where: { status: "ACTIVE", category: { in: [lead.category, "General"] } }, orderBy: [{ category: "asc" }, { isDefault: "desc" }, { updatedAt: "desc" }] });
-  return NextResponse.json({ script, scriptSource: lead.assignedScript ? "Assigned by Admin" : script ? (script.category === lead.category ? "Category default" : "General fallback") : null, resources });
+  const activeScripts = await prisma.callingScript.findMany({ where: { status: "ACTIVE" }, include: { objections: { orderBy: { position: "asc" } } } });
+  const matchedScripts = activeScripts.filter((item) => categoryMatches(item.category, lead.category));
+  const script = lead.assignedScript || matchedScripts.sort((a, b) => Number(b.isDefaultForCategory) - Number(a.isDefaultForCategory) || categoryMatchScore(b.category, lead.category) - categoryMatchScore(a.category, lead.category))[0] || activeScripts.find((item) => item.category.toLowerCase() === "general business" && item.isDefaultForCategory);
+  const allResources = await prisma.resource.findMany({ where: { status: "ACTIVE" }, orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }] });
+  const resources = allResources.filter((item) => item.category.toLowerCase() === "general" || categoryMatches(item.category, lead.category)).sort((a, b) => categoryMatchScore(b.category, lead.category) - categoryMatchScore(a.category, lead.category));
+  return NextResponse.json({ script, scriptSource: lead.assignedScript ? "Assigned by Admin" : script ? (matchedScripts.length ? "Category default" : "General fallback") : null, resources });
 }
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { user, lead } = await permitted(params.id);
