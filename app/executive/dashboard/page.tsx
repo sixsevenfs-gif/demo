@@ -461,12 +461,6 @@ export default function ExecutiveDashboard() {
               className={field}
             />
           </div>
-          <textarea
-            value={followNote}
-            onChange={(e) => setFollowNote(e.target.value)}
-            placeholder="Meeting note *"
-            className={field}
-          />
           <YesNo
             label="Was meeting information shared on WhatsApp?"
             value={whatsapp}
