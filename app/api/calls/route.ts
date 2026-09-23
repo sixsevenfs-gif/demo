@@ -3,7 +3,7 @@ import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 import { uploadEvidence } from "@/lib/evidence-store";
 
-const OUTCOMES = new Set(["INTERESTED", "CALL_LATER", "NO_ANSWER", "NOT_INTERESTED", "WRONG_NUMBER", "MEETING_REQUIRED"]);
+const OUTCOMES = new Set(["INTERESTED", "CALL_LATER", "NO_ANSWER", "NOT_INTERESTED", "WRONG_NUMBER"]);
 const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
@@ -33,6 +33,7 @@ export async function POST(req: NextRequest) {
     const followUpTime = text(form, "followUpTime");
     const meetingDate = text(form, "meetingDate");
     const meetingTime = text(form, "meetingTime");
+    const meetingNote = text(form, "meetingNote");
     const whatsappSentType = text(form, "whatsappSentType");
     const whatsappNote = text(form, "whatsappNote");
     const durationSeconds = 0;
@@ -44,6 +45,7 @@ export async function POST(req: NextRequest) {
     if (needsSummary && summary.length < 15) return NextResponse.json({ error: "Write a useful client conversation summary (at least 15 characters)" }, { status: 400 });
     if (outcome === "WRONG_NUMBER" && !outcomeReason) return NextResponse.json({ error: "Select what happened with this number" }, { status: 400 });
     if (outcome === "NOT_INTERESTED" && (!outcomeReason || summary.length < 15)) return NextResponse.json({ error: "Select a reason and write what the client said" }, { status: 400 });
+    if (outcome === "INTERESTED" && meetingNote.length < 5) return NextResponse.json({ error: "Write what the client said about the meeting" }, { status: 400 });
     if (!validEvidence(callLog)) return NextResponse.json({ error: "A call-log screenshot (JPG, PNG or WebP, max 8 MB) is required" }, { status: 400 });
     if (whatsappPerformed) {
       if (!validEvidence(whatsappProof)) return NextResponse.json({ error: "A WhatsApp screenshot is required for this result" }, { status: 400 });
@@ -52,15 +54,15 @@ export async function POST(req: NextRequest) {
     if (outcome === "CALL_LATER" && !followUpRequired) return NextResponse.json({ error: "Call Later requires a follow-up" }, { status: 400 });
     const followAt = followUpRequired ? scheduledAt(followUpDate, followUpTime) : null;
     if (followUpRequired && !followAt) return NextResponse.json({ error: "Select a valid follow-up date and time" }, { status: 400 });
-    const meetingAt = outcome === "MEETING_REQUIRED" ? scheduledAt(meetingDate, meetingTime) : null;
-    if (outcome === "MEETING_REQUIRED" && !meetingAt) return NextResponse.json({ error: "Select a valid meeting date and time" }, { status: 400 });
+    const meetingAt = outcome === "INTERESTED" && (meetingDate || meetingTime) ? scheduledAt(meetingDate, meetingTime) : null;
+    if (outcome === "INTERESTED" && (meetingDate || meetingTime) && !meetingAt) return NextResponse.json({ error: "Select both meeting date and time, or leave both empty" }, { status: 400 });
 
     const lead = await prisma.lead.findUnique({ where: { id: leadId } });
     if (!lead || lead.isDeleted) return NextResponse.json({ error: "Lead not found" }, { status: 404 });
     if (user.role === "CALLING_EXECUTIVE" && lead.assignedToId !== user.id) return NextResponse.json({ error: "This lead is assigned to another executive" }, { status: 403 });
 
-    const statusByOutcome: Record<string, string> = { INTERESTED: "INTERESTED", CALL_LATER: "CALLBACK_REQUESTED", MEETING_REQUIRED: "MEETING_SCHEDULED", NOT_INTERESTED: outcomeReason === "Asked Not to Contact Again" ? "DO_NOT_CALL" : "NOT_INTERESTED", NO_ANSWER: "NO_ANSWER", WRONG_NUMBER: "WRONG_NUMBER" };
-    const call = await prisma.call.create({ data: { leadId, executiveId: user.id, outcome, durationSeconds, notes: summary || null, clientConversationSummary: summary || null, outcomeReason: outcomeReason || null, followUpNote: followUpNote || null, answeredStatus: outcome === "NO_ANSWER" ? "NO_ANSWER" : "ANSWERED", whatsappSentType: whatsappSentType || null, whatsappNote: whatsappNote || null, requiresFollowUp: followUpRequired, followUpDate: followUpDate || null, followUpTime: followUpTime || null, meetingDate: meetingDate || null, meetingTime: meetingTime || null } });
+    const statusByOutcome: Record<string, string> = { INTERESTED: meetingAt ? "MEETING_SCHEDULED" : "INTERESTED", CALL_LATER: "CALLBACK_REQUESTED", NOT_INTERESTED: outcomeReason === "Asked Not to Contact Again" ? "DO_NOT_CALL" : "NOT_INTERESTED", NO_ANSWER: "NO_ANSWER", WRONG_NUMBER: "WRONG_NUMBER" };
+    const call = await prisma.call.create({ data: { leadId, executiveId: user.id, outcome, durationSeconds, notes: summary || null, clientConversationSummary: summary || null, outcomeReason: outcomeReason || null, followUpNote: followUpNote || meetingNote || null, answeredStatus: outcome === "NO_ANSWER" ? "NO_ANSWER" : "ANSWERED", whatsappSentType: whatsappSentType || null, whatsappNote: whatsappNote || null, requiresFollowUp: followUpRequired, followUpDate: followUpDate || null, followUpTime: followUpTime || null, meetingDate: meetingDate || null, meetingTime: meetingTime || null } });
 
     const evidence: Array<{ file: File; type: string }> = [{ file: callLog, type: "CALL_LOG" }];
     if (validEvidence(whatsappProof)) evidence.push({ file: whatsappProof, type: "WHATSAPP" });
@@ -69,7 +71,7 @@ export async function POST(req: NextRequest) {
       await prisma.attachment.create({ data: { leadId, callId: call.id, executiveId: user.id, type: item.type, fileId: fileId.toString(), filename: item.file.name, mimeType: item.file.type } });
     }
     if (followAt) await prisma.followUp.create({ data: { leadId, executiveId: user.id, scheduledAt: followAt, status: "PENDING", notes: summary } });
-    if (meetingAt) await prisma.meeting.create({ data: { leadId, executiveId: user.id, scheduledAt: meetingAt, notes: summary } });
+    if (meetingAt) await prisma.meeting.create({ data: { leadId, executiveId: user.id, scheduledAt: meetingAt, notes: meetingNote } });
 
     // A no-answer without an explicit retry is retried tomorrow, never immediately.
     const retryAt = outcome === "NO_ANSWER" && !followAt ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null;

@@ -6,7 +6,6 @@ import { LeadToolkit } from "@/components/executive/lead-toolkit";
 const outcomes = [
   ["INTERESTED", "Interested"],
   ["CALL_LATER", "Call Later"],
-  ["MEETING_REQUIRED", "Meeting Required"],
   ["NO_ANSWER", "No Answer"],
   ["NOT_INTERESTED", "Not Interested"],
   ["WRONG_NUMBER", "Wrong Number"],
@@ -74,7 +73,8 @@ export default function ExecutiveDashboard() {
   const [followTime, setFollowTime] = useState("11:00");
   const [followNote, setFollowNote] = useState("");
   const [meetingDate, setMeetingDate] = useState("");
-  const [meetingTime, setMeetingTime] = useState("11:00");
+  const [meetingTime, setMeetingTime] = useState("");
+  const [meetingNote, setMeetingNote] = useState("");
   const [whatsapp, setWhatsapp] = useState(false);
   const [whatsappType, setWhatsappType] = useState("");
   const [whatsappNote, setWhatsappNote] = useState("");
@@ -129,6 +129,7 @@ export default function ExecutiveDashboard() {
     setFollowDate("");
     setFollowNote("");
     setMeetingDate("");
+    setMeetingNote("");
     setWhatsapp(false);
     setWhatsappType("");
     setWhatsappNote("");
@@ -145,7 +146,8 @@ export default function ExecutiveDashboard() {
     setFollowTime("11:00");
     setFollowNote("");
     setMeetingDate("");
-    setMeetingTime("11:00");
+    setMeetingTime("");
+    setMeetingNote("");
     setWhatsapp(false);
     setWhatsappType("");
     setWhatsappNote("");
@@ -167,6 +169,7 @@ export default function ExecutiveDashboard() {
       followUpDate: followDate,
       followUpTime: followTime,
       followUpNote: followNote,
+      meetingNote,
       meetingDate,
       meetingTime,
       whatsappPerformed: String(whatsapp),
@@ -351,6 +354,32 @@ export default function ExecutiveDashboard() {
           {common}
         </>
       );
+    if (outcome === "INTERESTED")
+      return (
+        <>
+          {Summary({ placeholder: "What did the client say?" })}
+          {common}
+          <label className="block text-sm font-semibold">
+            Meeting note *
+            <textarea
+              value={meetingNote}
+              onChange={(e) => setMeetingNote(e.target.value)}
+              placeholder="Meeting ke baare mein client ne kya bola?"
+              className={`${field} mt-2`}
+              rows={3}
+            />
+          </label>
+          <div>
+            <p className="mb-2 text-sm font-semibold">Meeting date & time <span className="font-normal text-slate-400">(optional)</span></p>
+            <div className="grid grid-cols-2 gap-3">
+              <input type="date" value={meetingDate} onChange={(e) => setMeetingDate(e.target.value)} className={field} />
+              <input type="time" value={meetingTime} onChange={(e) => setMeetingTime(e.target.value)} className={field} />
+            </div>
+          </div>
+          {YesNo({ label: "Did you send anything on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
+          {whatsapp && <><select value={whatsappType} onChange={(e) => setWhatsappType(e.target.value)} className={field}><option value="">What was sent? *</option>{sentOptions.map((x) => <option key={x}>{x}</option>)}</select>{WhatsAppUpload()}</>}
+        </>
+      );
     if (outcome === "CALL_LATER")
       return (
         <>
@@ -424,39 +453,6 @@ export default function ExecutiveDashboard() {
           )}
           {WhatsAppUpload()}
           {FollowFields()}
-        </>
-      );
-    if (outcome === "MEETING_REQUIRED")
-      return (
-        <>
-          {Summary({})}
-          {common}
-          <div className="grid grid-cols-2 gap-3">
-            <input
-              type="date"
-              value={meetingDate}
-              onChange={(e) => setMeetingDate(e.target.value)}
-              className={field}
-            />
-            <input
-              type="time"
-              value={meetingTime}
-              onChange={(e) => setMeetingTime(e.target.value)}
-              className={field}
-            />
-          </div>
-          {YesNo({ label: "Was meeting information shared on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
-          {whatsapp && (
-            <>
-              <input
-                value={whatsappType}
-                onChange={(e) => setWhatsappType(e.target.value)}
-                placeholder="What was shared?"
-                className={field}
-              />
-              {WhatsAppUpload()}
-            </>
-          )}
         </>
       );
     return (
