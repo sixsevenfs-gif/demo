@@ -34,6 +34,7 @@ export default function LeadDetailPage() {
   const [aiSummary, setAiSummary] = useState<{ summary: string; insight: any } | null>(null);
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
+  const [scripts, setScripts] = useState<any[]>([]);
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -59,6 +60,10 @@ export default function LeadDetailPage() {
       fetchLeadDetails();
     }
   }, [params.id, reloadKey]);
+
+  useEffect(() => {
+    if (isAdmin) fetch("/api/scripts").then((r) => r.ok ? r.json() : null).then((data) => setScripts(data?.scripts || []));
+  }, [isAdmin]);
 
   // Generate AI Lead Summary
   const handleGenerateSummary = async () => {
@@ -400,6 +405,24 @@ export default function LeadDetailPage() {
                         {exec.name}
                       </option>
                     ))}
+                </select>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div>
+                <label className="text-slate-400 block text-[11px] mb-1">
+                  Script override
+                </label>
+                <select
+                  value={lead.assignedScriptId || ""}
+                  onChange={(e) => fetch(`/api/leads/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assignedScriptId: e.target.value || null }) }).then(fetchLeadDetails)}
+                  className="w-full bg-[#0D0F17] border border-[#1E2333] rounded-lg p-2 text-xs text-white focus:outline-none"
+                >
+                  <option value="">Use category default</option>
+                  {scripts.filter((script) => script.status === "ACTIVE").map((script) => (
+                    <option key={script.id} value={script.id}>{script.name} ({script.category})</option>
+                  ))}
                 </select>
               </div>
             )}

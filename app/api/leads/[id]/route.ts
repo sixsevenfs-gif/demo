@@ -114,6 +114,7 @@ export async function PATCH(
       "notes",
       "tags",
       "isDoNotCall",
+      "assignedScriptId",
     ];
 
     for (const field of allowedFields) {

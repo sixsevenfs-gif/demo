@@ -27,6 +27,7 @@ model User {
   meetings      Meeting[]
   sentNotes     InternalNote[] @relation("SentNotes")
   noticeReceipts NoticeReceipt[]
+  resourceUsages ResourceUsage[]
   createdAt    DateTime   @default(now())
   updatedAt    DateTime   @updatedAt
 }
@@ -84,6 +85,9 @@ model Lead {
   activities      Activity[]
   meetings        Meeting[]
   internalNotes   InternalNote[]
+  assignedScriptId String? @db.ObjectId
+  assignedScript   CallingScript? @relation("LeadScript", fields: [assignedScriptId], references: [id])
+  resourceUsages   ResourceUsage[]
 
   createdAt       DateTime    @default(now())
   updatedAt       DateTime    @updatedAt
@@ -265,4 +269,79 @@ model Setting {
   key       String   @unique
   value     String
   updatedAt DateTime @updatedAt
+}
+
+model CallingScript {
+  id                   String   @id @default(auto()) @map("_id") @db.ObjectId
+  name                 String
+  category             String
+  subcategory          String?
+  language             String   @default("Hinglish")
+  status               String   @default("DRAFT") // ACTIVE | DRAFT | ARCHIVED
+  description          String?
+  opening              String?
+  discoveryQuestions   String?
+  problem              String?
+  solution             String?
+  demoIntroduction     String?
+  priceResponse        String?
+  closing              String?
+  whatsappFollowUp     String?
+  internalInstructions String?
+  isDefaultForCategory Boolean  @default(false)
+  version              Int      @default(1)
+  createdById          String?  @db.ObjectId
+  updatedByName        String?
+  objections           ScriptObjection[]
+  leads                Lead[]   @relation("LeadScript")
+  createdAt            DateTime @default(now())
+  updatedAt            DateTime @updatedAt
+
+  @@index([category, status])
+  @@index([status])
+}
+
+model ScriptObjection {
+  id       String        @id @default(auto()) @map("_id") @db.ObjectId
+  scriptId String        @db.ObjectId
+  script   CallingScript @relation(fields: [scriptId], references: [id], onDelete: Cascade)
+  objection String
+  response  String
+  position  Int           @default(0)
+
+  @@index([scriptId])
+}
+
+model Resource {
+  id               String          @id @default(auto()) @map("_id") @db.ObjectId
+  name             String
+  type             String
+  category         String          @default("General")
+  url              String
+  description      String?
+  whatsappTemplate String?
+  status           String          @default("ACTIVE") // ACTIVE | INACTIVE | ARCHIVED
+  isDefault        Boolean         @default(false)
+  createdById      String?         @db.ObjectId
+  usages           ResourceUsage[]
+  createdAt        DateTime        @default(now())
+  updatedAt        DateTime        @updatedAt
+
+  @@index([category, status])
+  @@index([status])
+}
+
+model ResourceUsage {
+  id           String   @id @default(auto()) @map("_id") @db.ObjectId
+  resourceId   String   @db.ObjectId
+  resource     Resource @relation(fields: [resourceId], references: [id], onDelete: Cascade)
+  leadId       String   @db.ObjectId
+  lead         Lead     @relation(fields: [leadId], references: [id], onDelete: Cascade)
+  executiveId  String   @db.ObjectId
+  executive    User     @relation(fields: [executiveId], references: [id])
+  sentAt       DateTime @default(now())
+
+  @@index([resourceId])
+  @@index([leadId])
+  @@index([sentAt])
 }

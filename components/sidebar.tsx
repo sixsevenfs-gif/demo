@@ -12,6 +12,8 @@ import {
   Clock,
   Bell,
   Settings,
+  FileText,
+  Link2,
   ArrowUpRight,
   X,
 } from "lucide-react";
@@ -30,6 +32,8 @@ export function Sidebar() {
   const adminNavItems = [
     { name: "Dashboard", href: "/admin/dashboard", icon: LayoutDashboard },
     { name: "Leads", href: "/leads", icon: Users },
+    { name: "Scripts", href: "/scripts", icon: FileText },
+    { name: "Resources", href: "/resources", icon: Link2 },
     { name: "Follow-Ups", href: "/follow-ups", icon: Calendar },
     { name: "Executives", href: "/executives", icon: UserCheck },
     { name: "AI Import", href: "/imports", icon: UploadCloud },
@@ -40,6 +44,7 @@ export function Sidebar() {
   const executiveNavItems = [
     { name: "Home", href: "/executive/dashboard", icon: LayoutDashboard },
     { name: "My Leads", href: "/executive/leads", icon: Users },
+    { name: "Scripts", href: "/executive/scripts", icon: FileText },
     { name: "Follow-Ups", href: "/executive/follow-ups", icon: Calendar },
     { name: "Call History", href: "/executive/history", icon: Clock },
     { name: "Impo Note", href: "/executive/important-notes", icon: Bell },
