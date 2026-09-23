@@ -44,7 +44,6 @@ export async function POST(req: NextRequest) {
     if (needsSummary && summary.length < 15) return NextResponse.json({ error: "Write a useful client conversation summary (at least 15 characters)" }, { status: 400 });
     if (outcome === "WRONG_NUMBER" && !outcomeReason) return NextResponse.json({ error: "Select what happened with this number" }, { status: 400 });
     if (outcome === "NOT_INTERESTED" && (!outcomeReason || summary.length < 15)) return NextResponse.json({ error: "Select a reason and write what the client said" }, { status: 400 });
-    if (outcome === "MEETING_REQUIRED" && followUpNote.length < 5) return NextResponse.json({ error: "Add a useful meeting note" }, { status: 400 });
     if (!validEvidence(callLog)) return NextResponse.json({ error: "A call-log screenshot (JPG, PNG or WebP, max 8 MB) is required" }, { status: 400 });
     if (whatsappPerformed) {
       if (!validEvidence(whatsappProof)) return NextResponse.json({ error: "A WhatsApp screenshot is required for this result" }, { status: 400 });
