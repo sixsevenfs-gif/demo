@@ -34,7 +34,7 @@ export async function POST(req: NextRequest) {
   const call = await prisma.call.findUnique({ where: { id: callId }, include: { lead: true, executive: { select: { name: true } } } });
   if (!call) return NextResponse.json({ error: "Call not found" }, { status: 404 });
   await prisma.$transaction([
-    prisma.lead.update({ where: { id: call.leadId }, data: { assignedToId: call.executiveId, status: "CALL_PENDING", adminCallbackNote: note.trim(), adminCallbackAt: new Date(), nextFollowUpDate: new Date() } }),
+    prisma.lead.update({ where: { id: call.leadId }, data: { assignedToId: call.executiveId, status: "CALL_PENDING", adminCallbackNote: note.trim(), adminCallbackAt: new Date(), adminCallbackSourceCallId: call.id, nextFollowUpDate: new Date() } }),
     prisma.activity.create({ data: { leadId: call.leadId, userId: user.id, userName: user.name, type: "ADMIN_CALLBACK_ASSIGNED", description: `${user.name} asked ${call.executive.name} to call ${call.lead.businessName} again.`, metadata: JSON.stringify({ callId, reason: note.trim() }) } }),
   ]);
   return NextResponse.json({ success: true });

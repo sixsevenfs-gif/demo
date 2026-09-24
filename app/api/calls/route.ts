@@ -74,7 +74,7 @@ export async function POST(req: NextRequest) {
 
     // Only an admin's Assign Back action can put a handled lead back in the
     // executive calling queue. Call outcomes remain ordinary history records.
-    const updatedLead = await prisma.lead.update({ where: { id: leadId }, data: { status: statusByOutcome[outcome] || "ATTEMPTED", isDoNotCall: outcome === "NOT_INTERESTED" && outcomeReason === "Asked Not to Contact Again" ? true : lead.isDoNotCall, lastCallDate: new Date(), lastCallOutcome: outcome, callCount: { increment: 1 }, nextFollowUpDate: followAt || meetingAt, adminCallbackNote: null, adminCallbackAt: null }, include: { assignedTo: { select: { id: true, name: true } } } });
+    const updatedLead = await prisma.lead.update({ where: { id: leadId }, data: { status: statusByOutcome[outcome] || "ATTEMPTED", isDoNotCall: outcome === "NOT_INTERESTED" && outcomeReason === "Asked Not to Contact Again" ? true : lead.isDoNotCall, lastCallDate: new Date(), lastCallOutcome: outcome, callCount: { increment: 1 }, nextFollowUpDate: followAt || meetingAt, adminCallbackNote: null, adminCallbackAt: null, adminCallbackSourceCallId: null }, include: { assignedTo: { select: { id: true, name: true } } } });
     await prisma.activity.create({ data: { leadId, userId: user.id, userName: user.name, type: "CALL_MADE", description: `${user.name} logged ${outcome.replaceAll("_", " ")} for ${lead.businessName}`, metadata: JSON.stringify({ callId: call.id, outcome, durationSeconds, evidenceCount: evidence.length }) } });
     return NextResponse.json({ success: true, call, lead: updatedLead });
   } catch (error: any) {

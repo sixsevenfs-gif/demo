@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
         prisma.followUp.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
         prisma.meeting.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
         prisma.lead.count({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } } }),
-        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, adminCallbackNote: { not: null } }, orderBy: { adminCallbackAt: "desc" }, include: leadInclude }),
+        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: "CALL_PENDING", adminCallbackNote: { not: null } }, orderBy: { adminCallbackAt: "asc" }, include: leadInclude }),
         // Imported Mongo records may have an unset (rather than explicit null)
         // follow-up field. Assigned leads must still appear in the home queue.
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } }, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
@@ -28,7 +28,16 @@ export async function GET(req: NextRequest) {
       ]);
       const requestedLeadId = new URL(req.url).searchParams.get("leadId");
       const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...scope, isDoNotCall: false }, include: leadInclude }) : null;
-      return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead: requestedLead || adminCallbackLead || freshNextLead, followUps: dueFollowUps });
+      const nextLead = requestedLead || adminCallbackLead || freshNextLead;
+      const callbackPreviousCall = nextLead?.adminCallbackNote
+        ? nextLead.adminCallbackSourceCallId
+          ? await prisma.call.findFirst({
+              where: { id: nextLead.adminCallbackSourceCallId, leadId: nextLead.id },
+              select: { callDate: true, outcome: true, clientConversationSummary: true, notes: true, outcomeReason: true, followUpNote: true },
+            }) || nextLead.calls[0] || null
+          : nextLead.calls[0] || null
+        : null;
+      return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead, callbackPreviousCall, followUps: dueFollowUps });
     }
     const [totalLeads, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
       prisma.lead.count({ where: { isDeleted: false } }),

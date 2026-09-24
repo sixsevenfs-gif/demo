@@ -509,7 +509,21 @@ export default function ExecutiveDashboard() {
       )}
       {lead ? (
         <section className="rounded-2xl border border-indigo-500/30 bg-[#12141C] p-5 space-y-5">
-          {lead.adminCallbackNote && <div className="rounded-xl border border-rose-500/50 bg-rose-500/10 p-4"><p className="text-xs font-bold text-rose-300">ADMIN CALLBACK REQUIRED</p><p className="mt-1 text-sm font-medium text-rose-100">{lead.adminCallbackNote}</p><p className="mt-1 text-xs text-rose-300">You called this lead earlier. Admin has asked you to call again and log the new result.</p></div>}
+          {lead.adminCallbackNote && (
+            <div className="rounded-xl border border-rose-500/50 bg-rose-500/10 p-4">
+              <p className="text-xs font-bold text-rose-300">ADMIN CALLBACK REQUIRED</p>
+              <p className="mt-2 text-sm font-semibold text-rose-100">Why admin wants another call</p>
+              <p className="mt-1 whitespace-pre-wrap text-sm text-rose-100">{lead.adminCallbackNote}</p>
+              {data.callbackPreviousCall && (
+                <div className="mt-4 rounded-lg border border-rose-500/25 bg-[#12141C] p-3 text-sm">
+                  <p className="font-semibold text-rose-200">Earlier call · {new Date(data.callbackPreviousCall.callDate).toLocaleString("en-IN", { timeZone: "Asia/Kolkata", day: "numeric", month: "short", year: "numeric", hour: "numeric", minute: "2-digit" })}</p>
+                  <p className="mt-1 text-slate-200">Result: {data.callbackPreviousCall.outcome.replaceAll("_", " ")}</p>
+                  <p className="mt-2 whitespace-pre-wrap text-slate-300">{data.callbackPreviousCall.clientConversationSummary || data.callbackPreviousCall.notes || data.callbackPreviousCall.outcomeReason || data.callbackPreviousCall.followUpNote || "No previous call note recorded."}</p>
+                </div>
+              )}
+              <p className="mt-3 text-xs text-rose-300">Call again and save the new result to complete this admin request.</p>
+            </div>
+          )}
           <div>
             <p className="text-xs font-bold tracking-wider text-indigo-300">
               NEXT LEAD TO CALL
