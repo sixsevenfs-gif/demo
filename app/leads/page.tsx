@@ -48,6 +48,7 @@ export default function LeadsPage() {
   const [bulkTargetExec, setBulkTargetExec] = useState("");
   const [bulkScriptChoice, setBulkScriptChoice] = useState("");
   const [bulkResourceChoice, setBulkResourceChoice] = useState("");
+  const [bulkAssignmentNote, setBulkAssignmentNote] = useState("");
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -137,6 +138,7 @@ export default function LeadsPage() {
           body: JSON.stringify({
             leadIds: selectedIds,
             action: "ROUND_ROBIN",
+            assignmentNote: bulkAssignmentNote,
           }),
         });
         const json = await res.json();
@@ -155,6 +157,7 @@ export default function LeadsPage() {
 
     if (bulkAction === "ASSIGN" || bulkAction === "TOOLKIT") {
       if (bulkAction === "ASSIGN" && !bulkTargetExec) return alert("Choose an executive first.");
+      if (bulkAction === "ASSIGN" && selectedIds.some((id) => (leads.find((lead) => lead.id === id)?.callCount || 0) > 0) && bulkAssignmentNote.trim().length < 5) return alert("Write why these previously called leads need another call.");
       if (bulkAction === "TOOLKIT" && !bulkScriptChoice && !bulkResourceChoice) return alert("Choose a script or link first.");
       try {
         const res = await fetch("/api/leads/bulk", {
@@ -164,6 +167,7 @@ export default function LeadsPage() {
             leadIds: selectedIds,
             action: bulkAction,
             executiveId: bulkTargetExec,
+            assignmentNote: bulkAssignmentNote,
             ...(bulkScriptChoice ? { assignedScriptId: bulkScriptChoice === "__DEFAULT__" ? null : bulkScriptChoice } : {}),
             ...(bulkResourceChoice ? { assignedResourceId: bulkResourceChoice === "__DEFAULT__" ? null : bulkResourceChoice } : {}),
           }),
@@ -174,6 +178,7 @@ export default function LeadsPage() {
           setSelectedIds([]);
           setBulkScriptChoice("");
           setBulkResourceChoice("");
+          setBulkAssignmentNote("");
           fetchLeads();
         } else {
           alert(json.error || "Bulk action failed");
@@ -409,6 +414,10 @@ export default function LeadsPage() {
                   {resources.filter((resource) => resource.status === "ACTIVE" && resource.url).map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
                 </select>
               </>
+            )}
+
+            {(bulkAction === "ASSIGN" || bulkAction === "ROUND_ROBIN") && (
+              <input aria-label="Reason for assigning again" value={bulkAssignmentNote} onChange={(e) => setBulkAssignmentNote(e.target.value)} placeholder="Why call again? Required for old leads" className="min-w-64 bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none" />
             )}
 
             <button

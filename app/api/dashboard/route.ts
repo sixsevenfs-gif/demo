@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
     if (user.role === "CALLING_EXECUTIVE") {
       const scope = { assignedToId: user.id, isDeleted: false };
       const queueWhere = { ...scope, isDoNotCall: false, OR: [{ callingAssignmentPending: true }, { adminCallbackNote: { not: null } }, { callCount: 0, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING"] } }] };
-      const leadInclude = { calls: { orderBy: { callDate: "desc" as const }, take: 1 } };
+      const leadInclude = { calls: { orderBy: { callDate: "desc" as const }, take: 1, include: { executive: { select: { name: true } } } } };
       const [callsDone, interested, followUps, meetings, callsPending, adminCallbackLead, freshNextLead, dueFollowUps] = await Promise.all([
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end } } }),
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end }, outcome: "INTERESTED" } }),
@@ -30,14 +30,7 @@ export async function GET(req: NextRequest) {
       const requestedLeadId = new URL(req.url).searchParams.get("leadId");
       const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...queueWhere }, include: leadInclude }) : null;
       const nextLead = requestedLead || adminCallbackLead || freshNextLead;
-      const callbackPreviousCall = nextLead?.adminCallbackNote
-        ? nextLead.adminCallbackSourceCallId
-          ? await prisma.call.findFirst({
-              where: { id: nextLead.adminCallbackSourceCallId, leadId: nextLead.id },
-              select: { callDate: true, outcome: true, clientConversationSummary: true, notes: true, outcomeReason: true, followUpNote: true },
-            }) || nextLead.calls[0] || null
-          : nextLead.calls[0] || null
-        : null;
+      const callbackPreviousCall = nextLead?.calls[0] || null;
       return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead, callbackPreviousCall, followUps: dueFollowUps });
     }
     const [totalLeads, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([

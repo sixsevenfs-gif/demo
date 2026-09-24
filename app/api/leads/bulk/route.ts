@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       tag,
       assignedScriptId,
       assignedResourceId,
+      assignmentNote,
     } = await req.json();
 
     if (!Array.isArray(leadIds) || leadIds.length === 0) {
@@ -54,6 +55,13 @@ export async function POST(req: NextRequest) {
         );
       }
 
+      if (action === "ASSIGN") {
+        const previouslyCalled = await prisma.lead.count({ where: { id: { in: leadIds }, isDeleted: false, callCount: { gt: 0 } } });
+        if (previouslyCalled && (!assignmentNote?.trim() || assignmentNote.trim().length < 5)) {
+          return NextResponse.json({ error: "Write why previously called leads need another call (at least 5 characters)" }, { status: 400 });
+        }
+      }
+
       if (assignedScriptId !== undefined && assignedScriptId !== null) {
         const script = await prisma.callingScript.findFirst({ where: { id: assignedScriptId, status: "ACTIVE" }, select: { id: true } });
         if (!script) return NextResponse.json({ error: "Choose an active script" }, { status: 400 });
@@ -66,7 +74,7 @@ export async function POST(req: NextRequest) {
       const result = await prisma.lead.updateMany({
         where: { id: { in: leadIds }, isDeleted: false },
         data: {
-          ...(action === "ASSIGN" ? { assignedToId: executiveId, status: "ASSIGNED", callingAssignmentPending: true } : {}),
+          ...(action === "ASSIGN" ? { assignedToId: executiveId, status: "ASSIGNED", callingAssignmentPending: true, adminCallbackNote: assignmentNote?.trim() || null, adminCallbackAt: assignmentNote?.trim() ? new Date() : null, adminCallbackSourceCallId: null } : {}),
           ...(assignedScriptId !== undefined ? { assignedScriptId } : {}),
           ...(assignedResourceId !== undefined ? { assignedResourceId } : {}),
         },
@@ -79,7 +87,7 @@ export async function POST(req: NextRequest) {
           action: action === "ASSIGN" ? "BULK_ASSIGNED" : "BULK_TOOLKIT_ASSIGNED",
           entityType: "Lead",
           entityId: "BULK",
-          details: `${action === "ASSIGN" ? `Assigned to ${execUser?.name}` : "Updated toolkit"} for ${result.count} leads; script ${assignedScriptId === undefined ? "unchanged" : assignedScriptId || "category default"}; link ${assignedResourceId === undefined ? "unchanged" : assignedResourceId || "category default"}`,
+          details: `${action === "ASSIGN" ? `Assigned to ${execUser?.name}` : "Updated toolkit"} for ${result.count} leads; reason ${assignmentNote?.trim() || "new leads"}; script ${assignedScriptId === undefined ? "unchanged" : assignedScriptId || "category default"}; link ${assignedResourceId === undefined ? "unchanged" : assignedResourceId || "category default"}`,
         },
       });
 
@@ -90,6 +98,8 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "ROUND_ROBIN") {
+      const previouslyCalled = await prisma.lead.count({ where: { id: { in: leadIds }, isDeleted: false, callCount: { gt: 0 } } });
+      if (previouslyCalled && (!assignmentNote?.trim() || assignmentNote.trim().length < 5)) return NextResponse.json({ error: "Write why previously called leads need another call (at least 5 characters)" }, { status: 400 });
       // Get target executives
       let execs: Array<{ id: string; name: string }> = [];
       if (Array.isArray(executiveIds) && executiveIds.length > 0) {
@@ -120,6 +130,9 @@ export async function POST(req: NextRequest) {
             assignedToId: assignedExec.id,
             status: "ASSIGNED",
             callingAssignmentPending: true,
+            adminCallbackNote: assignmentNote?.trim() || null,
+            adminCallbackAt: assignmentNote?.trim() ? new Date() : null,
+            adminCallbackSourceCallId: null,
           },
         });
       });

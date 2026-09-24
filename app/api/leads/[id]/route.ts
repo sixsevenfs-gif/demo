@@ -145,9 +145,15 @@ export async function PATCH(
           { status: 403 }
         );
       }
+      if (body.assignedToId && existing.callCount > 0 && (!body.assignmentNote?.trim() || body.assignmentNote.trim().length < 5)) {
+        return NextResponse.json({ error: "Write why this previously called lead needs another call (at least 5 characters)" }, { status: 400 });
+      }
       dataToUpdate.assignedToId = body.assignedToId;
       dataToUpdate.status = body.assignedToId ? "ASSIGNED" : "UNASSIGNED";
       dataToUpdate.callingAssignmentPending = !!body.assignedToId;
+      dataToUpdate.adminCallbackNote = body.assignedToId ? body.assignmentNote?.trim() || null : null;
+      dataToUpdate.adminCallbackAt = body.assignedToId && body.assignmentNote?.trim() ? new Date() : null;
+      dataToUpdate.adminCallbackSourceCallId = null;
     }
 
     const updated = await prisma.lead.update({

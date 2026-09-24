@@ -126,12 +126,18 @@ export default function LeadDetailPage() {
 
   // Reassign Lead (Admin only)
   const handleReassign = async (newExecId: string) => {
+    const assignmentNote = newExecId && lead.callCount > 0 ? window.prompt("Why should the executive call this client again? (required)") : "";
+    if (newExecId && lead.callCount > 0 && (!assignmentNote || assignmentNote.trim().length < 5)) {
+      alert("Write a reason of at least 5 characters to reassign a previously called lead.");
+      return;
+    }
     try {
-      await fetch(`/api/leads/${lead.id}`, {
+      const response = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedToId: newExecId || null }),
+        body: JSON.stringify({ assignedToId: newExecId || null, assignmentNote }),
       });
+      if (!response.ok) { const data = await response.json(); alert(data.error || "Could not reassign lead"); return; }
       fetchLeadDetails();
       triggerReload();
     } catch (err) {
