@@ -68,6 +68,7 @@ model Lead {
 
   assignedToId    String?     @db.ObjectId
   assignedTo      User?       @relation("AssignedLeads", fields: [assignedToId], references: [id])
+  callingAssignmentPending Boolean @default(false)
   createdById     String?     @db.ObjectId
   createdBy       User?       @relation("CreatedLeads", fields: [createdById], references: [id])
 

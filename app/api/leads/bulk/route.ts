@@ -66,7 +66,7 @@ export async function POST(req: NextRequest) {
       const result = await prisma.lead.updateMany({
         where: { id: { in: leadIds }, isDeleted: false },
         data: {
-          ...(action === "ASSIGN" ? { assignedToId: executiveId, status: "ASSIGNED" } : {}),
+          ...(action === "ASSIGN" ? { assignedToId: executiveId, status: "ASSIGNED", callingAssignmentPending: true } : {}),
           ...(assignedScriptId !== undefined ? { assignedScriptId } : {}),
           ...(assignedResourceId !== undefined ? { assignedResourceId } : {}),
         },
@@ -119,6 +119,7 @@ export async function POST(req: NextRequest) {
           data: {
             assignedToId: assignedExec.id,
             status: "ASSIGNED",
+            callingAssignmentPending: true,
           },
         });
       });

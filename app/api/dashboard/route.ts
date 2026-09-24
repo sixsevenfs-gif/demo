@@ -13,21 +13,22 @@ export async function GET(req: NextRequest) {
     const end = new Date(start.getTime() + 86400000 - 1);
     if (user.role === "CALLING_EXECUTIVE") {
       const scope = { assignedToId: user.id, isDeleted: false };
+      const queueWhere = { ...scope, isDoNotCall: false, OR: [{ callingAssignmentPending: true }, { adminCallbackNote: { not: null } }, { callCount: 0, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING"] } }] };
       const leadInclude = { calls: { orderBy: { callDate: "desc" as const }, take: 1 } };
       const [callsDone, interested, followUps, meetings, callsPending, adminCallbackLead, freshNextLead, dueFollowUps] = await Promise.all([
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end } } }),
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end }, outcome: "INTERESTED" } }),
         prisma.followUp.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
         prisma.meeting.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
-        prisma.lead.count({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } } }),
+        prisma.lead.count({ where: queueWhere }),
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: "CALL_PENDING", adminCallbackNote: { not: null } }, orderBy: { adminCallbackAt: "asc" }, include: leadInclude }),
         // Imported Mongo records may have an unset (rather than explicit null)
         // follow-up field. Assigned leads must still appear in the home queue.
-        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } }, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
+        prisma.lead.findFirst({ where: queueWhere, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
         prisma.followUp.findMany({ where: { executiveId: user.id, status: "PENDING", scheduledAt: { lte: end } }, include: { lead: { select: { id: true, businessName: true, phone: true } } }, orderBy: { scheduledAt: "asc" }, take: 20 }),
       ]);
       const requestedLeadId = new URL(req.url).searchParams.get("leadId");
-      const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...scope, isDoNotCall: false }, include: leadInclude }) : null;
+      const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...queueWhere }, include: leadInclude }) : null;
       const nextLead = requestedLead || adminCallbackLead || freshNextLead;
       const callbackPreviousCall = nextLead?.adminCallbackNote
         ? nextLead.adminCallbackSourceCallId

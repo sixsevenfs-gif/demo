@@ -147,6 +147,7 @@ export async function PATCH(
       }
       dataToUpdate.assignedToId = body.assignedToId;
       dataToUpdate.status = body.assignedToId ? "ASSIGNED" : "UNASSIGNED";
+      dataToUpdate.callingAssignmentPending = !!body.assignedToId;
     }
 
     const updated = await prisma.lead.update({
