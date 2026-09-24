@@ -35,6 +35,7 @@ export default function LeadDetailPage() {
   const [isGeneratingAi, setIsGeneratingAi] = useState(false);
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [scripts, setScripts] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -62,8 +63,27 @@ export default function LeadDetailPage() {
   }, [params.id, reloadKey]);
 
   useEffect(() => {
-    if (isAdmin) fetch("/api/scripts").then((r) => r.ok ? r.json() : null).then((data) => setScripts(data?.scripts || []));
+    if (!isAdmin) return;
+    void Promise.all([fetch("/api/scripts"), fetch("/api/resources")]).then(async ([scriptResponse, resourceResponse]) => {
+      if (scriptResponse.ok) setScripts((await scriptResponse.json()).scripts || []);
+      if (resourceResponse.ok) setResources((await resourceResponse.json()).resources || []);
+    }).catch(console.error);
   }, [isAdmin]);
+
+  const handleToolkitChange = async (field: "assignedScriptId" | "assignedResourceId", value: string) => {
+    const response = await fetch(`/api/leads/${lead.id}`, {
+      method: "PATCH",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ [field]: value || null }),
+    });
+    if (!response.ok) {
+      const data = await response.json();
+      alert(data.error || "Could not update lead toolkit.");
+      return;
+    }
+    await fetchLeadDetails();
+    triggerReload();
+  };
 
   // Generate AI Lead Summary
   const handleGenerateSummary = async () => {
@@ -416,7 +436,7 @@ export default function LeadDetailPage() {
                 </label>
                 <select
                   value={lead.assignedScriptId || ""}
-                  onChange={(e) => fetch(`/api/leads/${lead.id}`, { method: "PATCH", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ assignedScriptId: e.target.value || null }) }).then(fetchLeadDetails)}
+                  onChange={(e) => void handleToolkitChange("assignedScriptId", e.target.value)}
                   className="w-full bg-[#0D0F17] border border-[#1E2333] rounded-lg p-2 text-xs text-white focus:outline-none"
                 >
                   <option value="">Use category default</option>
@@ -424,6 +444,27 @@ export default function LeadDetailPage() {
                     <option key={script.id} value={script.id}>{script.name} ({script.category})</option>
                   ))}
                 </select>
+              </div>
+            )}
+
+            {isAdmin && (
+              <div>
+                <label className="text-slate-400 block text-[11px] mb-1">Link for this lead</label>
+                <select
+                  value={lead.assignedResourceId || ""}
+                  onChange={(e) => void handleToolkitChange("assignedResourceId", e.target.value)}
+                  className="w-full bg-[#0D0F17] border border-[#1E2333] rounded-lg p-2 text-xs text-white focus:outline-none"
+                >
+                  <option value="">Use category links</option>
+                  {resources.filter((resource) => resource.status === "ACTIVE" && resource.url).map((resource) => (
+                    <option key={resource.id} value={resource.id}>{resource.name}</option>
+                  ))}
+                </select>
+                {lead.assignedResourceId && resources.find((resource) => resource.id === lead.assignedResourceId)?.url && (
+                  <a href={resources.find((resource) => resource.id === lead.assignedResourceId)?.url} target="_blank" rel="noopener noreferrer" className="mt-1 block truncate text-[11px] text-indigo-300 hover:underline">
+                    {resources.find((resource) => resource.id === lead.assignedResourceId)?.url}
+                  </a>
+                )}
               </div>
             )}
 

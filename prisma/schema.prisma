@@ -91,6 +91,7 @@ model Lead {
   internalNotes   InternalNote[]
   assignedScriptId String? @db.ObjectId
   assignedScript   CallingScript? @relation("LeadScript", fields: [assignedScriptId], references: [id])
+  assignedResourceId String? @db.ObjectId
   resourceUsages   ResourceUsage[]
 
   createdAt       DateTime    @default(now())

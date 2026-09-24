@@ -32,6 +32,8 @@ export default function LeadsPage() {
   const [totalCount, setTotalCount] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
   const [activeExecutives, setActiveExecutives] = useState<any[]>([]);
+  const [scripts, setScripts] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
 
   // Filters
   const [search, setSearch] = useState("");
@@ -44,6 +46,8 @@ export default function LeadsPage() {
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const [bulkAction, setBulkAction] = useState("");
   const [bulkTargetExec, setBulkTargetExec] = useState("");
+  const [bulkScriptChoice, setBulkScriptChoice] = useState("");
+  const [bulkResourceChoice, setBulkResourceChoice] = useState("");
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -84,6 +88,14 @@ export default function LeadsPage() {
     void loadExecutives();
     const refresh = window.setInterval(() => void loadExecutives(), 15_000);
     return () => window.clearInterval(refresh);
+  }, [isAdmin, reloadKey]);
+
+  useEffect(() => {
+    if (!isAdmin) return;
+    void Promise.all([fetch("/api/scripts"), fetch("/api/resources")]).then(async ([scriptResponse, resourceResponse]) => {
+      if (scriptResponse.ok) setScripts((await scriptResponse.json()).scripts || []);
+      if (resourceResponse.ok) setResources((await resourceResponse.json()).resources || []);
+    }).catch(console.error);
   }, [isAdmin, reloadKey]);
 
   // Bulk selection toggles
@@ -141,21 +153,27 @@ export default function LeadsPage() {
       return;
     }
 
-    if (bulkAction === "ASSIGN" && bulkTargetExec) {
+    if (bulkAction === "ASSIGN" || bulkAction === "TOOLKIT") {
+      if (bulkAction === "ASSIGN" && !bulkTargetExec) return alert("Choose an executive first.");
+      if (bulkAction === "TOOLKIT" && !bulkScriptChoice && !bulkResourceChoice) return alert("Choose a script or link first.");
       try {
         const res = await fetch("/api/leads/bulk", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             leadIds: selectedIds,
-            action: "ASSIGN",
+            action: bulkAction,
             executiveId: bulkTargetExec,
+            ...(bulkScriptChoice ? { assignedScriptId: bulkScriptChoice === "__DEFAULT__" ? null : bulkScriptChoice } : {}),
+            ...(bulkResourceChoice ? { assignedResourceId: bulkResourceChoice === "__DEFAULT__" ? null : bulkResourceChoice } : {}),
           }),
         });
         const json = await res.json();
         if (res.ok) {
           alert(json.message);
           setSelectedIds([]);
+          setBulkScriptChoice("");
+          setBulkResourceChoice("");
           fetchLeads();
         } else {
           alert(json.error || "Bulk action failed");
@@ -345,12 +363,12 @@ export default function LeadsPage() {
 
       {/* Bulk Action Banner (when leads selected) */}
       {selectedIds.length > 0 && isAdmin && (
-        <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex items-center justify-between gap-3 text-xs animate-in fade-in">
+        <div className="p-3 bg-indigo-500/10 border border-indigo-500/30 rounded-xl flex flex-wrap items-center justify-between gap-3 text-xs animate-in fade-in">
           <div className="font-semibold text-indigo-300">
             {selectedIds.length} lead{selectedIds.length > 1 ? "s" : ""} selected
           </div>
 
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <select
               value={bulkAction}
               onChange={(e) => setBulkAction(e.target.value)}
@@ -359,6 +377,7 @@ export default function LeadsPage() {
               <option value="">Select Bulk Action...</option>
               <option value="ROUND_ROBIN">Round-Robin Assignment (Even Split)</option>
               <option value="ASSIGN">Assign to Specific Executive</option>
+              <option value="TOOLKIT">Set Script &amp; Link</option>
               <option value="EXPORT">Export Selected to CSV</option>
             </select>
 
@@ -375,6 +394,21 @@ export default function LeadsPage() {
                     </option>
                   ))}
               </select>
+            )}
+
+            {(bulkAction === "ASSIGN" || bulkAction === "TOOLKIT") && (
+              <>
+                <select aria-label="Script for selected leads" value={bulkScriptChoice} onChange={(e) => setBulkScriptChoice(e.target.value)} className="bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                  <option value="">Keep current script</option>
+                  <option value="__DEFAULT__">Use category default script</option>
+                  {scripts.filter((script) => script.status === "ACTIVE").map((script) => <option key={script.id} value={script.id}>{script.name} ({script.category})</option>)}
+                </select>
+                <select aria-label="Link for selected leads" value={bulkResourceChoice} onChange={(e) => setBulkResourceChoice(e.target.value)} className="bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                  <option value="">Keep current link</option>
+                  <option value="__DEFAULT__">Use category links</option>
+                  {resources.filter((resource) => resource.status === "ACTIVE" && resource.url).map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                </select>
+              </>
             )}
 
             <button

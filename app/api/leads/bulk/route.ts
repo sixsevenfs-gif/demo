@@ -20,6 +20,8 @@ export async function POST(req: NextRequest) {
       status,
       priority,
       tag,
+      assignedScriptId,
+      assignedResourceId,
     } = await req.json();
 
     if (!Array.isArray(leadIds) || leadIds.length === 0) {
@@ -29,30 +31,44 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    if (action === "ASSIGN") {
-      if (!executiveId) {
+    if (action === "ASSIGN" || action === "TOOLKIT") {
+      if (action === "ASSIGN" && !executiveId) {
         return NextResponse.json(
           { error: "Target executive ID is required" },
           { status: 400 }
         );
       }
 
-      const execUser = await prisma.user.findFirst({
+      if (action === "TOOLKIT" && assignedScriptId === undefined && assignedResourceId === undefined) {
+        return NextResponse.json({ error: "Choose a script or link to assign" }, { status: 400 });
+      }
+
+      const execUser = action === "ASSIGN" ? await prisma.user.findFirst({
         where: { id: executiveId, role: "CALLING_EXECUTIVE", status: "ACTIVE" },
         select: { id: true, name: true },
-      });
-      if (!execUser) {
+      }) : null;
+      if (action === "ASSIGN" && !execUser) {
         return NextResponse.json(
           { error: "Selected calling executive is disabled or unavailable" },
           { status: 400 }
         );
       }
 
-      await prisma.lead.updateMany({
-        where: { id: { in: leadIds } },
+      if (assignedScriptId !== undefined && assignedScriptId !== null) {
+        const script = await prisma.callingScript.findFirst({ where: { id: assignedScriptId, status: "ACTIVE" }, select: { id: true } });
+        if (!script) return NextResponse.json({ error: "Choose an active script" }, { status: 400 });
+      }
+      if (assignedResourceId !== undefined && assignedResourceId !== null) {
+        const resource = await prisma.resource.findFirst({ where: { id: assignedResourceId, status: "ACTIVE" }, select: { id: true } });
+        if (!resource) return NextResponse.json({ error: "Choose an active link" }, { status: 400 });
+      }
+
+      const result = await prisma.lead.updateMany({
+        where: { id: { in: leadIds }, isDeleted: false },
         data: {
-          assignedToId: executiveId,
-          status: "ASSIGNED",
+          ...(action === "ASSIGN" ? { assignedToId: executiveId, status: "ASSIGNED" } : {}),
+          ...(assignedScriptId !== undefined ? { assignedScriptId } : {}),
+          ...(assignedResourceId !== undefined ? { assignedResourceId } : {}),
         },
       });
 
@@ -60,16 +76,16 @@ export async function POST(req: NextRequest) {
         data: {
           userId: user.id,
           userName: user.name,
-          action: "BULK_ASSIGNED",
+          action: action === "ASSIGN" ? "BULK_ASSIGNED" : "BULK_TOOLKIT_ASSIGNED",
           entityType: "Lead",
           entityId: "BULK",
-          details: `Assigned ${leadIds.length} leads to ${execUser?.name || executiveId}`,
+          details: `${action === "ASSIGN" ? `Assigned to ${execUser?.name}` : "Updated toolkit"} for ${result.count} leads; script ${assignedScriptId === undefined ? "unchanged" : assignedScriptId || "category default"}; link ${assignedResourceId === undefined ? "unchanged" : assignedResourceId || "category default"}`,
         },
       });
 
       return NextResponse.json({
         success: true,
-        message: `Successfully assigned ${leadIds.length} leads to ${execUser?.name || "Executive"}`,
+        message: action === "ASSIGN" ? `Assigned ${result.count} leads to ${execUser?.name || "Executive"}` : `Updated script/link for ${result.count} leads`,
       });
     }
 

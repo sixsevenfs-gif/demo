@@ -115,6 +115,7 @@ export async function PATCH(
       "tags",
       "isDoNotCall",
       "assignedScriptId",
+      "assignedResourceId",
     ];
 
     for (const field of allowedFields) {
@@ -125,6 +126,15 @@ export async function PATCH(
 
     if (body.phone) {
       dataToUpdate.normalizedPhone = normalizePhoneNumber(body.phone);
+    }
+
+    if (body.assignedScriptId) {
+      const script = await prisma.callingScript.findFirst({ where: { id: body.assignedScriptId, status: "ACTIVE" }, select: { id: true } });
+      if (!script) return NextResponse.json({ error: "Choose an active script" }, { status: 400 });
+    }
+    if (body.assignedResourceId) {
+      const resource = await prisma.resource.findFirst({ where: { id: body.assignedResourceId, status: "ACTIVE" }, select: { id: true } });
+      if (!resource) return NextResponse.json({ error: "Choose an active link" }, { status: 400 });
     }
 
     // Admin-only field: reassign lead
