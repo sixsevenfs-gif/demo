@@ -17,6 +17,7 @@ model User {
   status       String     @default("ACTIVE")    // "ACTIVE" | "INACTIVE"
   dailyTarget  Int        @default(50)
   avatar       String?
+  lastLoginAt  DateTime?
   assignedLeads Lead[]    @relation("AssignedLeads")
   createdLeads  Lead[]    @relation("CreatedLeads")
   calls         Call[]

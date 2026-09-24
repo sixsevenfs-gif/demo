@@ -24,6 +24,11 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Invalid credentials" }, { status: 401 });
     }
 
+    await prisma.user.update({
+      where: { id: user.id },
+      data: { lastLoginAt: new Date() },
+    });
+
     const cookieStore = cookies();
     const role = user.role as "ADMIN" | "CALLING_EXECUTIVE";
     if (role !== "ADMIN" && role !== "CALLING_EXECUTIVE") {

@@ -36,6 +36,7 @@ export async function GET() {
         email: exec.email,
         phone: exec.phone,
         status: exec.status,
+        lastLoginAt: exec.lastLoginAt,
         avatar: exec.avatar || exec.name.slice(0, 2).toUpperCase(),
         dailyTarget: exec.dailyTarget,
         assignedLeadCount: exec.assignedLeads.length,

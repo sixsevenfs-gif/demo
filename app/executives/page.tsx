@@ -141,6 +141,13 @@ export default function ExecutivesPage() {
                 </span>
               </div>
 
+              <div className="rounded-lg border border-[#1E2333] bg-[#0D0F17] px-3 py-2 text-xs">
+                <span className="text-slate-400">Last login: </span>
+                <span className="font-medium text-slate-200">
+                  {exec.lastLoginAt ? new Date(exec.lastLoginAt).toLocaleString() : "Never logged in"}
+                </span>
+              </div>
+
               {/* Target Progress Bar */}
               <div className="space-y-1.5">
                 <div className="flex justify-between text-xs">
