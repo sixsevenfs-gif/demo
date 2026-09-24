@@ -305,6 +305,7 @@ export default function LeadsPage() {
             <option value="ALL">All Statuses</option>
             <option value="NEW">New</option>
             <option value="ASSIGNED">Assigned</option>
+            <option value="NO_ANSWER">No Answer</option>
             <option value="INTERESTED">Interested</option>
             <option value="FOLLOW_UP">Follow-Up</option>
             <option value="CALLBACK_REQUESTED">Callback Requested</option>
