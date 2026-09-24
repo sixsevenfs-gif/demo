@@ -2,15 +2,28 @@ import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 import { getCurrentUser } from "@/lib/auth";
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
+  const params = new URL(req.url).searchParams;
+  const date = params.get("date");
+  if (date && (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(new Date(`${date}T00:00:00+05:30`).getTime()))) {
+    return NextResponse.json({ error: "Use a valid date" }, { status: 400 });
+  }
+  const page = Math.max(1, Number.parseInt(params.get("page") || "1", 10) || 1);
+  const pageSize = user.role === "CALLING_EXECUTIVE" ? 50 : 200;
+  const dayStart = date ? new Date(`${date}T00:00:00+05:30`) : null;
+  const where = {
+    ...(user.role === "CALLING_EXECUTIVE" ? { executiveId: user.id } : {}),
+    ...(dayStart ? { callDate: { gte: dayStart, lt: new Date(dayStart.getTime() + 86_400_000) } } : {}),
+  };
+  const total = await prisma.call.count({ where });
   const calls = await prisma.call.findMany({
-    where: user.role === "CALLING_EXECUTIVE" ? { executiveId: user.id } : {},
-    include: { lead: { select: { id: true, businessName: true, phone: true, assignedToId: true, adminCallbackNote: true, adminCallbackAt: true } }, executive: { select: { id: true, name: true } }, attachments: { select: { id: true, type: true, filename: true } } },
-    orderBy: { callDate: "desc" }, take: 200,
+    where,
+    include: { lead: { select: { id: true, businessName: true, phone: true, status: true, nextFollowUpDate: true, assignedToId: true, adminCallbackNote: true, adminCallbackAt: true } }, executive: { select: { id: true, name: true } }, attachments: { select: { id: true, type: true, filename: true } } },
+    orderBy: { callDate: "desc" }, skip: (page - 1) * pageSize, take: pageSize,
   });
-  return NextResponse.json({ calls });
+  return NextResponse.json({ calls, total, page, hasMore: page * pageSize < total });
 }
 
 export async function POST(req: NextRequest) {
