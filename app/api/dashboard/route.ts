@@ -17,7 +17,7 @@ export async function GET(req: NextRequest) {
         prisma.meeting.count({ where: { executiveId: user.id, status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
         prisma.lead.count({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } } }),
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, adminCallbackNote: { not: null } }, orderBy: { adminCallbackAt: "desc" }, include: leadInclude }),
-        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, nextFollowUpDate: { lte: now }, status: { in: ["CALLBACK_REQUESTED", "NO_ANSWER", "FOLLOW_UP", "INTERESTED"] } }, orderBy: { nextFollowUpDate: "asc" }, include: leadInclude }),
+        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, nextFollowUpDate: { lte: now }, status: { in: ["CALLBACK_REQUESTED", "NO_ANSWER", "FOLLOW_UP"] } }, orderBy: { nextFollowUpDate: "asc" }, include: leadInclude }),
         // Imported Mongo records may have an unset (rather than explicit null)
         // follow-up field. Assigned leads must still appear in the home queue.
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } }, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
