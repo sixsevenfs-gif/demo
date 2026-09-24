@@ -51,9 +51,8 @@ export async function POST(req: NextRequest) {
       if (!validEvidence(whatsappProof)) return NextResponse.json({ error: "A WhatsApp screenshot is required for this result" }, { status: 400 });
       if (!whatsappSentType) return NextResponse.json({ error: "Select what was sent on WhatsApp" }, { status: 400 });
     }
-    if (outcome === "CALL_LATER" && !followUpRequired) return NextResponse.json({ error: "Call Later requires a follow-up" }, { status: 400 });
-    const followAt = followUpRequired ? scheduledAt(followUpDate, followUpTime) : null;
-    if (followUpRequired && !followAt) return NextResponse.json({ error: "Select a valid follow-up date and time" }, { status: 400 });
+    const followAt = user.role === "ADMIN" && followUpRequired ? scheduledAt(followUpDate, followUpTime) : null;
+    if (user.role === "ADMIN" && followUpRequired && !followAt) return NextResponse.json({ error: "Select a valid follow-up date and time" }, { status: 400 });
     const meetingAt = outcome === "INTERESTED" && (meetingDate || meetingTime) ? scheduledAt(meetingDate, meetingTime) : null;
     if (outcome === "INTERESTED" && (meetingDate || meetingTime) && !meetingAt) return NextResponse.json({ error: "Select both meeting date and time, or leave both empty" }, { status: 400 });
 
@@ -62,7 +61,7 @@ export async function POST(req: NextRequest) {
     if (user.role === "CALLING_EXECUTIVE" && lead.assignedToId !== user.id) return NextResponse.json({ error: "This lead is assigned to another executive" }, { status: 403 });
 
     const statusByOutcome: Record<string, string> = { INTERESTED: meetingAt ? "MEETING_SCHEDULED" : "INTERESTED", CALL_LATER: "CALLBACK_REQUESTED", NOT_INTERESTED: outcomeReason === "Asked Not to Contact Again" ? "DO_NOT_CALL" : "NOT_INTERESTED", NO_ANSWER: "NO_ANSWER", WRONG_NUMBER: "WRONG_NUMBER" };
-    const call = await prisma.call.create({ data: { leadId, executiveId: user.id, outcome, durationSeconds, notes: summary || null, clientConversationSummary: summary || null, outcomeReason: outcomeReason || null, followUpNote: followUpNote || meetingNote || null, answeredStatus: outcome === "NO_ANSWER" ? "NO_ANSWER" : "ANSWERED", whatsappSentType: whatsappSentType || null, whatsappNote: whatsappNote || null, requiresFollowUp: followUpRequired, followUpDate: followUpDate || null, followUpTime: followUpTime || null, meetingDate: meetingDate || null, meetingTime: meetingTime || null } });
+    const call = await prisma.call.create({ data: { leadId, executiveId: user.id, outcome, durationSeconds, notes: summary || null, clientConversationSummary: summary || null, outcomeReason: outcomeReason || null, followUpNote: followUpNote || meetingNote || null, answeredStatus: outcome === "NO_ANSWER" ? "NO_ANSWER" : "ANSWERED", whatsappSentType: whatsappSentType || null, whatsappNote: whatsappNote || null, requiresFollowUp: !!followAt, followUpDate: followAt ? followUpDate : null, followUpTime: followAt ? followUpTime : null, meetingDate: meetingDate || null, meetingTime: meetingTime || null } });
 
     const evidence: Array<{ file: File; type: string }> = [{ file: callLog, type: "CALL_LOG" }];
     if (validEvidence(whatsappProof)) evidence.push({ file: whatsappProof, type: "WHATSAPP" });
@@ -73,11 +72,9 @@ export async function POST(req: NextRequest) {
     if (followAt) await prisma.followUp.create({ data: { leadId, executiveId: user.id, scheduledAt: followAt, status: "PENDING", notes: summary } });
     if (meetingAt) await prisma.meeting.create({ data: { leadId, executiveId: user.id, scheduledAt: meetingAt, notes: meetingNote } });
 
-    // A no-answer without an explicit retry is retried tomorrow, never immediately.
-    const retryAt = outcome === "NO_ANSWER" && !followAt ? new Date(Date.now() + 24 * 60 * 60 * 1000) : null;
-    // A new final result must clear any old callback date. Otherwise a lead
-    // that was already handled can incorrectly come back as the next call.
-    const updatedLead = await prisma.lead.update({ where: { id: leadId }, data: { status: statusByOutcome[outcome] || "ATTEMPTED", isDoNotCall: outcome === "NOT_INTERESTED" && outcomeReason === "Asked Not to Contact Again" ? true : lead.isDoNotCall, lastCallDate: new Date(), lastCallOutcome: outcome, callCount: { increment: 1 }, nextFollowUpDate: followAt || meetingAt || retryAt, adminCallbackNote: null, adminCallbackAt: null }, include: { assignedTo: { select: { id: true, name: true } } } });
+    // Only an admin's Assign Back action can put a handled lead back in the
+    // executive calling queue. Call outcomes remain ordinary history records.
+    const updatedLead = await prisma.lead.update({ where: { id: leadId }, data: { status: statusByOutcome[outcome] || "ATTEMPTED", isDoNotCall: outcome === "NOT_INTERESTED" && outcomeReason === "Asked Not to Contact Again" ? true : lead.isDoNotCall, lastCallDate: new Date(), lastCallOutcome: outcome, callCount: { increment: 1 }, nextFollowUpDate: followAt || meetingAt, adminCallbackNote: null, adminCallbackAt: null }, include: { assignedTo: { select: { id: true, name: true } } } });
     await prisma.activity.create({ data: { leadId, userId: user.id, userName: user.name, type: "CALL_MADE", description: `${user.name} logged ${outcome.replaceAll("_", " ")} for ${lead.businessName}`, metadata: JSON.stringify({ callId: call.id, outcome, durationSeconds, evidenceCount: evidence.length }) } });
     return NextResponse.json({ success: true, call, lead: updatedLead });
   } catch (error: any) {

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
-import { ChevronRight, Clock, Phone } from "lucide-react";
+import { ChevronRight } from "lucide-react";
 
 type Period = "today" | "yesterday" | "lifetime" | "custom";
 type CallRecord = {
@@ -16,7 +16,7 @@ type CallRecord = {
     businessName: string;
     phone: string;
     status: string;
-    nextFollowUpDate?: string | null;
+    adminCallbackNote?: string | null;
   };
 };
 type DayStats = { date: string; calls: number; connected: number; interested: number; callbacks: number; meetings: number };
@@ -40,12 +40,6 @@ export default function ExecutiveHistory() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-  const [now, setNow] = useState(Date.now());
-
-  useEffect(() => {
-    const tick = window.setInterval(() => setNow(Date.now()), 60_000);
-    return () => window.clearInterval(tick);
-  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -124,13 +118,11 @@ export default function ExecutiveHistory() {
     <div className="mt-5 flex items-center justify-between"><h2 className="font-bold">{heading}</h2><span className="text-xs text-slate-400">{calls.length} shown</span></div>
     {error && <p role="alert" className="mt-3 text-sm text-rose-300">{error}</p>}
     <div className="mt-3 space-y-3">{calls.length ? calls.map((call) => {
-      const pending = (call.outcome === "NO_ANSWER" || call.outcome === "CALL_LATER") && ["NO_ANSWER", "CALLBACK_REQUESTED"].includes(call.lead.status);
-      const dueAt = call.lead.nextFollowUpDate ? new Date(call.lead.nextFollowUpDate) : null;
-      const canCallBack = !dueAt || dueAt.getTime() <= now;
+      const pending = call.lead.status === "CALL_PENDING" && !!call.lead.adminCallbackNote;
       return <div key={call.id} className={`rounded-xl border p-4 ${pending ? "border-rose-500/45 bg-rose-500/5" : "border-[#1E2333] bg-[#12141C]"}`}>
         <div className="flex flex-col justify-between gap-3 sm:flex-row">
           <Link href={`/executive/leads/${call.lead.id}`} className="min-w-0"><div className="flex items-center gap-2"><b>{call.lead.businessName}</b><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pending ? "bg-rose-500 text-white" : "bg-[#272E44] text-slate-200"}`}>{call.outcome.replaceAll("_", " ")}</span></div><p className="mt-1 text-xs text-slate-400">{new Date(call.callDate).toLocaleString()} · {call.clientConversationSummary || call.notes || "No note"}</p><p className="mt-2 text-xs text-indigo-300">View full call timeline <ChevronRight className="inline w-3" /></p></Link>
-          {pending && <div className="shrink-0"><p className="mb-2 flex items-center gap-1 text-xs text-rose-300"><Clock className="w-3" />{dueAt ? `Callback ${canCallBack ? "due" : `available ${dueAt.toLocaleString()}`}` : "Callback required"}</p>{canCallBack ? <a href={`tel:${call.lead.phone}`} className="inline-flex rounded-lg bg-rose-500 px-3 py-2 text-xs font-bold text-white"><Phone className="mr-1 w-3.5" />Call back</a> : <button disabled className="rounded-lg border border-rose-500/30 px-3 py-2 text-xs text-rose-200 opacity-70">Call back locked</button>}</div>}
+          {pending && <div className="shrink-0 sm:max-w-52"><p className="mb-2 text-xs text-rose-300">Admin asked you to call again: {call.lead.adminCallbackNote}</p><Link href={`/executive/dashboard?leadId=${call.lead.id}`} className="inline-flex rounded-lg bg-rose-500 px-3 py-2 text-xs font-bold text-white">Call &amp; update result</Link></div>}
         </div>
       </div>;
     }) : !loading && !error && (period === "lifetime" || activeDate) ? <p className="rounded-xl border border-[#1E2333] p-6 text-slate-400">No calls recorded for {heading.toLowerCase()}.</p> : null}</div>

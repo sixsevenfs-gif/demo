@@ -12,7 +12,7 @@ const outcomes = [
 ];
 const buttons: Record<string, string> = {
   INTERESTED: "Save Interested Lead",
-  CALL_LATER: "Schedule Callback",
+  CALL_LATER: "Save Call Later",
   MEETING_REQUIRED: "Schedule Meeting",
   NO_ANSWER: "Save Call Attempt",
   NOT_INTERESTED: "Save as Not Interested",
@@ -129,10 +129,9 @@ export default function ExecutiveDashboard() {
     setOutcome(value);
     setSummary("");
     setReason("");
-    const callbackAt = new Date(Date.now() + 5 * 60 * 60 * 1000);
-    setFollowUp(value === "CALL_LATER");
-    setFollowDate(value === "CALL_LATER" ? callbackAt.toISOString().slice(0, 10) : "");
-    setFollowTime(value === "CALL_LATER" ? callbackAt.toTimeString().slice(0, 5) : "11:00");
+    setFollowUp(false);
+    setFollowDate("");
+    setFollowTime("11:00");
     setFollowNote("");
     setMeetingDate("");
     setMeetingNote("");
@@ -330,8 +329,6 @@ export default function ExecutiveDashboard() {
             placeholder="Attempt note (optional): Rang but no answer."
             className={field}
           />
-          {YesNo({ label: "Retry / Follow-Up?", value: followUp, setValue: setFollowUp })}
-          {followUp && FollowFields()}
         </>
       );
     if (outcome === "WRONG_NUMBER")
@@ -391,7 +388,6 @@ export default function ExecutiveDashboard() {
         <>
           {Summary({ placeholder: "Owner was busy and asked me to call again after 5 PM." })}
           {common}
-          {FollowFields()}
           {YesNo({ label: "Did you send anything on WhatsApp?", value: whatsapp, setValue: setWhatsapp })}
           {whatsapp && (
             <>
