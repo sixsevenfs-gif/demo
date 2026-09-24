@@ -6,15 +6,19 @@ export async function GET(req: NextRequest) {
   try {
     const user = await getCurrentUser();
     if (!user) return NextResponse.json({ error: "Authentication required" }, { status: 401 });
-    const now = new Date(); const start = new Date(now.getFullYear(), now.getMonth(), now.getDate()); const end = new Date(start.getTime() + 86400000 - 1);
+    // Vercel runs in UTC. Build the day in India time so the home counters
+    // reset at local midnight, matching the executive's Call History.
+    const todayInIndia = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const start = new Date(`${todayInIndia}T00:00:00+05:30`);
+    const end = new Date(start.getTime() + 86400000 - 1);
     if (user.role === "CALLING_EXECUTIVE") {
       const scope = { assignedToId: user.id, isDeleted: false };
       const leadInclude = { calls: { orderBy: { callDate: "desc" as const }, take: 1 } };
       const [callsDone, interested, followUps, meetings, callsPending, adminCallbackLead, freshNextLead, dueFollowUps] = await Promise.all([
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end } } }),
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end }, outcome: "INTERESTED" } }),
-        prisma.followUp.count({ where: { executiveId: user.id, status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
-        prisma.meeting.count({ where: { executiveId: user.id, status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
+        prisma.followUp.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
+        prisma.meeting.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
         prisma.lead.count({ where: { ...scope, isDoNotCall: false, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING", "ATTEMPTED"] } } }),
         prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, adminCallbackNote: { not: null } }, orderBy: { adminCallbackAt: "desc" }, include: leadInclude }),
         // Imported Mongo records may have an unset (rather than explicit null)

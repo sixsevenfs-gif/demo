@@ -18,7 +18,7 @@ const buttons: Record<string, string> = {
   NOT_INTERESTED: "Save as Not Interested",
   WRONG_NUMBER: "Mark Wrong Number",
 };
-const progressLabels: Record<string, string> = { callsDone: "Calls done", callsPending: "Calls pending", interested: "Interested", followUps: "Follow-ups", meetings: "Meetings" };
+const progressLabels: Record<string, string> = { callsDone: "Calls done today", callsPending: "Assigned calls pending", interested: "Interested today", followUps: "Follow-ups set today", meetings: "Meetings booked today" };
 const field =
   "w-full rounded-lg border border-[#293042] bg-[#0D0F17] p-2.5 text-sm text-white";
 const infoOptions = [
@@ -85,7 +85,7 @@ export default function ExecutiveDashboard() {
   const [saving, setSaving] = useState(false);
   const load = () => {
     const requestedLeadId = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("leadId") || "";
-    return fetch(`/api/dashboard${requestedLeadId ? `?leadId=${requestedLeadId}` : ""}`)
+    return fetch(`/api/dashboard${requestedLeadId ? `?leadId=${requestedLeadId}` : ""}`, { cache: "no-store" })
       .then(async (r) => {
         if (r.status === 401) {
           window.location.replace("/login");
