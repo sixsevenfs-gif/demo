@@ -46,6 +46,12 @@ export async function GET(req: NextRequest) {
       prisma.notice.findMany({ include: { receipts: true }, orderBy: { createdAt: "desc" }, take: 8 }),
       prisma.internalNote.findMany({ include: { sender: { select: { name: true } }, lead: { select: { id: true, businessName: true } } }, orderBy: { createdAt: "desc" }, take: 12 }),
     ]);
-    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity, followUps, interested, unassigned, executiveStatus, recentProofs, notices, executiveNotes });
+    // Keep the dashboard scan-friendly: one row per business, using its latest
+    // call today. The complete attempt-by-attempt history stays in View all.
+    const latestActivityByLead = activity.filter(
+      (call, index, allCalls) =>
+        allCalls.findIndex((candidate) => candidate.leadId === call.leadId) === index,
+    );
+    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, followUps, interested, unassigned, executiveStatus, recentProofs, notices, executiveNotes });
   } catch (error: any) { return NextResponse.json({ error: error.message || "Could not load dashboard" }, { status: 500 }); }
 }
