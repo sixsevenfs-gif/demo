@@ -30,6 +30,8 @@ function when(value: string) {
   });
 }
 export default function AdminDashboard() {
+  const [callsRange, setCallsRange] = useState<"today" | "yesterday" | "lifetime" | "date">("today");
+  const [callsDate, setCallsDate] = useState("");
   const [data, setData] = useState<any>();
   const [error, setError] = useState("");
   const [refreshing, setRefreshing] = useState(false);
@@ -52,7 +54,9 @@ export default function AdminDashboard() {
     isLoading.current = true;
     setRefreshing(true);
     try {
-      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      const query = new URLSearchParams({ callsRange });
+      if (callsRange === "date" && callsDate) query.set("callsDate", callsDate);
+      const response = await fetch(`/api/dashboard?${query}`, { cache: "no-store" });
       if (!response.ok) throw new Error("Could not load dashboard.");
       setData(await response.json());
       setError("");
@@ -63,14 +67,15 @@ export default function AdminDashboard() {
       setRefreshing(false);
       isLoading.current = false;
     }
-  }, []);
+  }, [callsRange, callsDate]);
   useEffect(() => {
+    if (callsRange === "date" && !callsDate) return;
     void load();
     const refreshTimer = window.setInterval(() => {
       if (document.visibilityState === "visible") void load();
     }, 30_000);
     return () => window.clearInterval(refreshTimer);
-  }, [load]);
+  }, [load, callsRange, callsDate]);
   async function sendNotice(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch("/api/notices", {
@@ -151,7 +156,13 @@ export default function AdminDashboard() {
             follow-ups.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <div className="flex flex-wrap items-center gap-1 rounded-xl border border-[#26304A] bg-[#12141C] p-1" aria-label="Call history period">
+            {(["today", "yesterday", "lifetime", "date"] as const).map((range) => (
+              <button key={range} type="button" onClick={() => { if (range === "date" && !callsDate) setCallsDate(new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10)); setCallsRange(range); }} className={`rounded-lg px-2.5 py-1 text-xs font-semibold capitalize ${callsRange === range ? "bg-indigo-500 text-white" : "text-slate-400 hover:text-white"}`}>{range === "date" ? "Pick date" : range}</button>
+            ))}
+            {callsRange === "date" && <input type="date" aria-label="Call history date" value={callsDate} onChange={(event) => setCallsDate(event.target.value)} className="rounded-lg border border-[#26304A] bg-[#0D0F17] px-2 py-1 text-xs text-white" />}
+          </div>
           {lastUpdated && (
             <span className="hidden text-xs text-slate-500 sm:inline">
               Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
@@ -180,15 +191,15 @@ export default function AdminDashboard() {
             <p className={`text-2xl font-bold ${cardTone[index]}`}>
               {String(value)}
             </p>
-            <p className="mt-1 text-xs text-slate-400">{labels[key]}</p>
+            <p className="mt-1 text-xs text-slate-400">{key === "callsToday" ? `Calls ${callsRange === "date" ? "on date" : callsRange}` : key === "connectedCalls" ? `Connected ${callsRange === "date" ? "on date" : callsRange}` : labels[key]}</p>
           </div>
         ))}
       </div>
       <div className="grid gap-5 xl:grid-cols-[minmax(0,2.1fr)_minmax(320px,1fr)]">
         <Section
-          title="Today’s Call Activity"
+          title={`${callsRange === "date" ? callsDate || "Selected date" : callsRange.charAt(0).toUpperCase() + callsRange.slice(1)} Call Activity`}
           action={
-            <Link href="/activity" className="text-xs text-indigo-300">
+            <Link href={`/activity?range=${callsRange}${callsRange === "date" ? `&date=${callsDate}` : ""}`} className="text-xs text-indigo-300">
               View all →
             </Link>
           }
@@ -250,7 +261,7 @@ export default function AdminDashboard() {
                 ) : (
                   <tr>
                     <td colSpan={7} className="p-5 text-center text-slate-400">
-                      No calls logged today.
+                      No calls logged for this period.
                     </td>
                   </tr>
                 )}
