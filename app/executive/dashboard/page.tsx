@@ -511,6 +511,7 @@ export default function ExecutiveDashboard() {
       )}
       {lead ? (
         <section className="rounded-2xl border border-indigo-500/30 bg-[#12141C] p-5 space-y-5">
+          {lead.adminCallbackNote && <div className="rounded-xl border border-rose-500/50 bg-rose-500/10 p-4"><p className="text-xs font-bold text-rose-300">ADMIN CALLBACK REQUIRED</p><p className="mt-1 text-sm font-medium text-rose-100">{lead.adminCallbackNote}</p><p className="mt-1 text-xs text-rose-300">You called this lead earlier. Admin has asked you to call again and log the new result.</p></div>}
           <div>
             <p className="text-xs font-bold tracking-wider text-indigo-300">
               NEXT LEAD TO CALL

@@ -75,6 +75,8 @@ model Lead {
   lastCallOutcome  String?
   callCount        Int         @default(0)
   nextFollowUpDate DateTime?
+  adminCallbackNote String?
+  adminCallbackAt   DateTime?
 
   tags            String?
   isDeleted       Boolean     @default(false)
