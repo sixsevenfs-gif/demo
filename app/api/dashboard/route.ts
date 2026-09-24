@@ -35,7 +35,9 @@ export async function GET(req: NextRequest) {
       prisma.followUp.count({ where: { status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
       prisma.meeting.count({ where: { status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
       prisma.lead.count({ where: { isDeleted: false, assignedToId: null } }),
-      prisma.call.findMany({ where: { callDate: { gte: start, lte: end } }, include: { executive: { select: { name: true } }, lead: { select: { id: true, businessName: true, category: true } }, attachments: { select: { id: true, type: true, filename: true } } }, orderBy: { callDate: "desc" }, take: 20 }),
+      // The dashboard is an operational view too: do not hide earlier calls
+      // behind the View all link once the team logs more than 20 calls.
+      prisma.call.findMany({ where: { callDate: { gte: start, lte: end } }, include: { executive: { select: { name: true } }, lead: { select: { id: true, businessName: true, category: true } }, attachments: { select: { id: true, type: true, filename: true } } }, orderBy: { callDate: "desc" }, take: 200 }),
       prisma.followUp.findMany({ where: { status: "PENDING", scheduledAt: { lte: end } }, include: { executive: { select: { name: true } }, lead: { select: { id: true, businessName: true, phone: true } } }, orderBy: { scheduledAt: "asc" }, take: 20 }),
       prisma.lead.findMany({ where: { isDeleted: false, status: "INTERESTED" }, include: { assignedTo: { select: { name: true } }, calls: { orderBy: { callDate: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 20 }),
       prisma.lead.findMany({ where: { isDeleted: false, assignedToId: null }, orderBy: { createdAt: "desc" }, take: 20 }),
