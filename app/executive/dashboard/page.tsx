@@ -1,5 +1,5 @@
 "use client";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useApp } from "@/components/context/app-context";
 import { LeadToolkit } from "@/components/executive/lead-toolkit";
 
@@ -64,6 +64,9 @@ const wrongReasons = [
 export default function ExecutiveDashboard() {
   const { user, isLoading } = useApp();
   const [data, setData] = useState<any>();
+  const [stats, setStats] = useState<any>();
+  const [selectedStatsDate, setSelectedStatsDate] = useState(() => new Date().toISOString().slice(0, 10));
+  const selectedStatsDateRef = useRef(selectedStatsDate);
   const [toolkit, setToolkit] = useState<any>();
   const [outcome, setOutcome] = useState("");
   const [summary, setSummary] = useState("");
@@ -83,6 +86,10 @@ export default function ExecutiveDashboard() {
   const [whatsappProof, setWhatsappProof] = useState<File | null>(null);
   const [message, setMessage] = useState("");
   const [saving, setSaving] = useState(false);
+  const loadStats = (date = selectedStatsDateRef.current) =>
+    fetch(`/api/calls/stats?date=${date}`, { cache: "no-store" })
+      .then((response) => (response.ok ? response.json() : null))
+      .then((value) => value && setStats(value));
   const load = () => {
     const requestedLeadId = typeof window === "undefined" ? "" : new URLSearchParams(window.location.search).get("leadId") || "";
     return fetch(`/api/dashboard${requestedLeadId ? `?leadId=${requestedLeadId}` : ""}`)
@@ -107,14 +114,22 @@ export default function ExecutiveDashboard() {
     void load();
     const refreshTimer = window.setInterval(() => {
       void load();
+      void loadStats();
     }, 15_000);
-    const refreshOnFocus = () => void load();
+    const refreshOnFocus = () => {
+      void load();
+      void loadStats();
+    };
     window.addEventListener("focus", refreshOnFocus);
     return () => {
       window.clearInterval(refreshTimer);
       window.removeEventListener("focus", refreshOnFocus);
     };
   }, []);
+  useEffect(() => {
+    selectedStatsDateRef.current = selectedStatsDate;
+    void loadStats(selectedStatsDate);
+  }, [selectedStatsDate]);
   useEffect(() => {
     const leadId = data?.nextLead?.id;
     if (!leadId) { setToolkit(undefined); return; }
@@ -195,6 +210,7 @@ export default function ExecutiveDashboard() {
     resetCallForm();
     setMessage("Call report saved successfully.");
     void load();
+    void loadStats();
   }
   const CallProof = () => (
     <label className="block text-sm font-semibold">
@@ -498,6 +514,28 @@ export default function ExecutiveDashboard() {
           </div>
         ))}
       </div>
+      <section className="rounded-2xl border border-[#1E2333] bg-[#12141C] p-4 sm:p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div>
+            <h2 className="font-bold">Call Performance</h2>
+            <p className="mt-1 text-xs text-slate-400">Your saved call reports update automatically.</p>
+          </div>
+          <label className="text-xs text-slate-400">
+            Check a date
+            <input type="date" value={selectedStatsDate} onChange={(event) => setSelectedStatsDate(event.target.value)} className="ml-2 rounded-lg border border-[#293042] bg-[#0D0F17] px-2 py-1.5 text-sm text-white" />
+          </label>
+        </div>
+        <div className="mt-4 grid grid-cols-3 gap-2 text-center">
+          <div className="rounded-xl bg-[#0D0F17] p-3"><b className="text-lg text-indigo-300">{stats?.today.calls ?? "—"}</b><p className="mt-1 text-[10px] text-slate-400">Today&apos;s calls</p></div>
+          <div className="rounded-xl bg-[#0D0F17] p-3"><b className="text-lg text-slate-200">{stats?.yesterday.calls ?? "—"}</b><p className="mt-1 text-[10px] text-slate-400">Yesterday&apos;s calls</p></div>
+          <div className="rounded-xl bg-[#0D0F17] p-3"><b className="text-lg text-emerald-300">{stats?.lifetimeCalls ?? "—"}</b><p className="mt-1 text-[10px] text-slate-400">Lifetime calls</p></div>
+        </div>
+        <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-5">
+          {[
+            ["Calls", stats?.selected.calls], ["Connected", stats?.selected.connected], ["Interested", stats?.selected.interested], ["Call later", stats?.selected.callbacks], ["Meetings booked", stats?.selected.meetings],
+          ].map(([label, value]) => <div key={String(label)} className="rounded-lg border border-[#293042] p-2 text-center"><b>{value ?? "—"}</b><p className="mt-1 text-[10px] text-slate-400">{label}</p></div>)}
+        </div>
+      </section>
       {message && !outcome && (
         <p
           className={
