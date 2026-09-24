@@ -28,6 +28,6 @@ export async function PATCH(req: NextRequest) {
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Admin authorization required" }, { status: 403 });
   const { id, status, adminReply } = await req.json();
   if (!id) return NextResponse.json({ error: "Note ID is required" }, { status: 400 });
-  const note = await prisma.internalNote.update({ where: { id }, data: { status: status || undefined, adminReply: adminReply?.trim() || undefined, resolvedAt: status === "RESOLVED" ? new Date() : undefined } });
+  const note = await prisma.internalNote.update({ where: { id }, data: { status: status || undefined, adminReply: adminReply?.trim() || undefined, senderReplyReadAt: adminReply?.trim() ? null : undefined, resolvedAt: status === "RESOLVED" ? new Date() : undefined } });
   return NextResponse.json({ success: true, note });
 }

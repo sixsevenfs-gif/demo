@@ -153,6 +153,7 @@ export async function PATCH(
       dataToUpdate.callingAssignmentPending = !!body.assignedToId;
       dataToUpdate.adminCallbackNote = body.assignedToId ? body.assignmentNote?.trim() || null : null;
       dataToUpdate.adminCallbackAt = body.assignedToId && body.assignmentNote?.trim() ? new Date() : null;
+      dataToUpdate.adminCallbackSeenAt = null;
       dataToUpdate.adminCallbackSourceCallId = null;
     }
 

@@ -78,6 +78,7 @@ model Lead {
   nextFollowUpDate DateTime?
   adminCallbackNote String?
   adminCallbackAt   DateTime?
+  adminCallbackSeenAt DateTime?
   adminCallbackSourceCallId String? @db.ObjectId
 
   tags            String?
@@ -195,6 +196,8 @@ model InternalNote {
   message   String
   status    String   @default("OPEN")
   adminReply String?
+  adminReadAt DateTime?
+  senderReplyReadAt DateTime?
   resolvedAt DateTime?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
