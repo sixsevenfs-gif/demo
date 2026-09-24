@@ -27,7 +27,7 @@ export async function GET(req: NextRequest) {
       const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...scope, isDoNotCall: false }, include: leadInclude }) : null;
       return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead: requestedLead || adminCallbackLead || dueNextLead || freshNextLead, followUps: dueFollowUps });
     }
-    const [totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, unassigned, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
+    const [totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
       prisma.lead.count({ where: { isDeleted: false } }),
       prisma.call.count({ where: { callDate: { gte: start, lte: end } } }),
       prisma.call.count({ where: { callDate: { gte: start, lte: end }, outcome: { notIn: ["NO_ANSWER", "WRONG_NUMBER"] } } }),
@@ -40,7 +40,6 @@ export async function GET(req: NextRequest) {
       prisma.call.findMany({ where: { callDate: { gte: start, lte: end } }, include: { executive: { select: { name: true } }, lead: { select: { id: true, businessName: true, category: true } }, attachments: { select: { id: true, type: true, filename: true } } }, orderBy: { callDate: "desc" }, take: 200 }),
       prisma.followUp.findMany({ where: { status: "PENDING", scheduledAt: { lte: end } }, include: { executive: { select: { name: true } }, lead: { select: { id: true, businessName: true, phone: true } } }, orderBy: { scheduledAt: "asc" }, take: 20 }),
       prisma.lead.findMany({ where: { isDeleted: false, status: "INTERESTED" }, include: { assignedTo: { select: { name: true } }, calls: { orderBy: { callDate: "desc" }, take: 1 } }, orderBy: { updatedAt: "desc" }, take: 20 }),
-      prisma.lead.findMany({ where: { isDeleted: false, assignedToId: null }, orderBy: { createdAt: "desc" }, take: 20 }),
       prisma.user.findMany({ where: { role: "CALLING_EXECUTIVE" }, select: { id: true, name: true, status: true, avatar: true, _count: { select: { calls: { where: { callDate: { gte: start, lte: end } } }, followUps: { where: { status: "PENDING" } }, meetings: { where: { status: "BOOKED" } } } } } }),
       prisma.attachment.findMany({ include: { lead: { select: { id: true, businessName: true } }, executive: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 12 }),
       prisma.notice.findMany({ include: { receipts: true }, orderBy: { createdAt: "desc" }, take: 8 }),
@@ -52,6 +51,6 @@ export async function GET(req: NextRequest) {
       (call, index, allCalls) =>
         allCalls.findIndex((candidate) => candidate.leadId === call.leadId) === index,
     );
-    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, followUps, interested, unassigned, executiveStatus, recentProofs, notices, executiveNotes });
+    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
   } catch (error: any) { return NextResponse.json({ error: error.message || "Could not load dashboard" }, { status: 500 }); }
 }

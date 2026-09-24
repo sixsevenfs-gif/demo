@@ -1,6 +1,7 @@
 "use client";
 import Link from "next/link";
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { RefreshCw } from "lucide-react";
 
 const labels: Record<string, string> = {
   totalLeads: "Total Leads",
@@ -31,6 +32,9 @@ function when(value: string) {
 export default function AdminDashboard() {
   const [data, setData] = useState<any>();
   const [error, setError] = useState("");
+  const [refreshing, setRefreshing] = useState(false);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const isLoading = useRef(false);
   const [showNotice, setShowNotice] = useState(false);
   const [selectedNote, setSelectedNote] = useState<any>(null);
   const [adminReply, setAdminReply] = useState("");
@@ -41,15 +45,32 @@ export default function AdminDashboard() {
     priority: "NORMAL",
     requireAcknowledgement: false,
   });
-  const load = () =>
-    fetch("/api/dashboard")
-      .then(async (r) =>
-        r.ok ? setData(await r.json()) : setError("Could not load dashboard."),
-      )
-      .catch(() => setError("Could not load dashboard."));
+  const load = useCallback(async () => {
+    // Avoid stacking slow network requests when a manual refresh and the
+    // 30-second background refresh happen close together.
+    if (isLoading.current) return;
+    isLoading.current = true;
+    setRefreshing(true);
+    try {
+      const response = await fetch("/api/dashboard", { cache: "no-store" });
+      if (!response.ok) throw new Error("Could not load dashboard.");
+      setData(await response.json());
+      setError("");
+      setLastUpdated(new Date());
+    } catch {
+      setError("Could not load dashboard.");
+    } finally {
+      setRefreshing(false);
+      isLoading.current = false;
+    }
+  }, []);
   useEffect(() => {
     void load();
-  }, []);
+    const refreshTimer = window.setInterval(() => {
+      if (document.visibilityState === "visible") void load();
+    }, 30_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [load]);
   async function sendNotice(e: React.FormEvent) {
     e.preventDefault();
     const res = await fetch("/api/notices", {
@@ -130,8 +151,24 @@ export default function AdminDashboard() {
             follow-ups.
           </p>
         </div>
-        <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
-          ● Live operations
+        <div className="flex items-center gap-2">
+          {lastUpdated && (
+            <span className="hidden text-xs text-slate-500 sm:inline">
+              Updated {lastUpdated.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
+            </span>
+          )}
+          <button
+            type="button"
+            onClick={() => void load()}
+            disabled={refreshing}
+            className="inline-flex items-center gap-1.5 rounded-full border border-indigo-500/40 bg-indigo-500/10 px-3 py-1 text-xs font-semibold text-indigo-200 disabled:cursor-wait disabled:opacity-60"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? "animate-spin" : ""}`} />
+            Refresh
+          </button>
+          <div className="rounded-full border border-emerald-500/30 bg-emerald-500/10 px-3 py-1 text-xs font-semibold text-emerald-300">
+            ● Live operations
+          </div>
         </div>
       </div>
       <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
