@@ -27,10 +27,8 @@ export async function GET(req: NextRequest) {
       const requestedLead = requestedLeadId ? await prisma.lead.findFirst({ where: { id: requestedLeadId, ...scope, isDoNotCall: false }, include: leadInclude }) : null;
       return NextResponse.json({ role: user.role, progress: { callsDone, callsPending, interested, followUps, meetings }, nextLead: requestedLead || adminCallbackLead || dueNextLead || freshNextLead, followUps: dueFollowUps });
     }
-    const [totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
+    const [totalLeads, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
       prisma.lead.count({ where: { isDeleted: false } }),
-      prisma.call.count({ where: { callDate: { gte: start, lte: end } } }),
-      prisma.call.count({ where: { callDate: { gte: start, lte: end }, outcome: { notIn: ["NO_ANSWER", "WRONG_NUMBER"] } } }),
       prisma.lead.count({ where: { isDeleted: false, status: "INTERESTED" } }),
       prisma.followUp.count({ where: { status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
       prisma.meeting.count({ where: { status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
@@ -51,6 +49,9 @@ export async function GET(req: NextRequest) {
       (call, index, allCalls) =>
         allCalls.findIndex((candidate) => candidate.leadId === call.leadId) === index,
     );
-    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday, connectedCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
+    const connectedBusinessCalls = latestActivityByLead.filter(
+      (call) => !["NO_ANSWER", "WRONG_NUMBER"].includes(call.outcome),
+    ).length;
+    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday: latestActivityByLead.length, connectedCalls: connectedBusinessCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
   } catch (error: any) { return NextResponse.json({ error: error.message || "Could not load dashboard" }, { status: 500 }); }
 }
