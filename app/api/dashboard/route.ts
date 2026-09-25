@@ -42,10 +42,10 @@ export async function GET(req: NextRequest) {
     const callDayStart = callsRange === "yesterday" ? new Date(start.getTime() - 86400000) : callsRange === "date" ? new Date(`${callsDate}T00:00:00+05:30`) : start;
     const callDateFilter = callsRange === "lifetime" ? {} : { callDate: { gte: callDayStart, lt: new Date(callDayStart.getTime() + 86400000) } };
     const [assignedToday, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
-      // This card must match the executives' current calling queue. Older
-      // assignments may predate assignedAt, but a pending assignment still
-      // needs to be visible to admin until the executive submits a result.
-      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, callingAssignmentPending: true } }),
+      // Keep the day's assigned batch stable as reports arrive: a lead stays
+      // in this count after its first call is saved today, while Calls Today
+      // independently reflects the live number of reports.
+      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, OR: [{ callingAssignmentPending: true }, { calls: { some: { callDate: { gte: start, lte: end } } } }] } }),
       prisma.lead.count({ where: { isDeleted: false, status: "INTERESTED" } }),
       prisma.followUp.count({ where: { status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
       prisma.meeting.count({ where: { status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
