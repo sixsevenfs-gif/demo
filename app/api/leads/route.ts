@@ -36,7 +36,14 @@ export async function GET(req: NextRequest) {
     }
 
     if (status && status !== "ALL") {
-      where.status = status;
+      // In the admin Leads screen, “New” means any lead that has not yet
+      // been allocated to an executive, including older imports marked
+      // UNASSIGNED rather than the legacy NEW status.
+      if (status === "NEW" && user.role === "ADMIN") {
+        where.assignedToId = null;
+      } else {
+        where.status = status;
+      }
     }
 
     if (priority && priority !== "ALL") {
