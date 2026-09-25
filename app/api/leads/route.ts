@@ -224,6 +224,7 @@ export async function POST(req: NextRequest) {
         status: finalAssignedTo ? (status === "NEW" ? "ASSIGNED" : status) : "UNASSIGNED",
         priority,
         assignedToId: finalAssignedTo,
+        assignedAt: finalAssignedTo ? new Date() : null,
         callingAssignmentPending: !!finalAssignedTo,
         createdById: user?.id || null,
         notes,

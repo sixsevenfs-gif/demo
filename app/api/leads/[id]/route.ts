@@ -149,6 +149,7 @@ export async function PATCH(
         return NextResponse.json({ error: "Write why this previously called lead needs another call (at least 5 characters)" }, { status: 400 });
       }
       dataToUpdate.assignedToId = body.assignedToId;
+      dataToUpdate.assignedAt = body.assignedToId ? new Date() : null;
       dataToUpdate.status = body.assignedToId ? "ASSIGNED" : "UNASSIGNED";
       dataToUpdate.callingAssignmentPending = !!body.assignedToId;
       dataToUpdate.adminCallbackNote = body.assignedToId ? body.assignmentNote?.trim() || null : null;

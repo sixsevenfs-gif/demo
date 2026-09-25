@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import { RefreshCw } from "lucide-react";
 
 const labels: Record<string, string> = {
-  totalLeads: "Total Leads",
+  assignedToday: "Today's Assigned Leads",
   callsToday: "Calls Today",
   connectedCalls: "Connected Calls",
   interestedLeads: "Interested Leads",

@@ -41,8 +41,8 @@ export async function GET(req: NextRequest) {
     }
     const callDayStart = callsRange === "yesterday" ? new Date(start.getTime() - 86400000) : callsRange === "date" ? new Date(`${callsDate}T00:00:00+05:30`) : start;
     const callDateFilter = callsRange === "lifetime" ? {} : { callDate: { gte: callDayStart, lt: new Date(callDayStart.getTime() + 86400000) } };
-    const [totalLeads, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
-      prisma.lead.count({ where: { isDeleted: false } }),
+    const [assignedToday, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
+      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, assignedAt: { gte: start, lte: end } } }),
       prisma.lead.count({ where: { isDeleted: false, status: "INTERESTED" } }),
       prisma.followUp.count({ where: { status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
       prisma.meeting.count({ where: { status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
@@ -66,6 +66,6 @@ export async function GET(req: NextRequest) {
     const connectedBusinessCalls = latestActivityByLead.filter(
       (call) => !["NO_ANSWER", "WRONG_NUMBER"].includes(call.outcome),
     ).length;
-    return NextResponse.json({ role: user.role, summary: { totalLeads, callsToday: latestActivityByLead.length, connectedCalls: connectedBusinessCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, callsRange, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
+    return NextResponse.json({ role: user.role, summary: { assignedToday, callsToday: latestActivityByLead.length, connectedCalls: connectedBusinessCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, callsRange, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
   } catch (error: any) { return NextResponse.json({ error: error.message || "Could not load dashboard" }, { status: 500 }); }
 }
