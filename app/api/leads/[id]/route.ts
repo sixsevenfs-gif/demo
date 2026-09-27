@@ -92,6 +92,7 @@ export async function PATCH(
     }
 
     const dataToUpdate: any = {};
+    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
     const allowedFields = [
       "businessName",
       "contactPerson",
@@ -145,11 +146,15 @@ export async function PATCH(
           { status: 403 }
         );
       }
+      if (body.assignedToId && (!/^\d{4}-\d{2}-\d{2}$/.test(body.scheduledForDate || today) || (body.scheduledForDate || today) < today)) {
+        return NextResponse.json({ error: "Choose today or a future assignment date" }, { status: 400 });
+      }
       if (body.assignedToId && existing.callCount > 0 && (!body.assignmentNote?.trim() || body.assignmentNote.trim().length < 5)) {
         return NextResponse.json({ error: "Write why this previously called lead needs another call (at least 5 characters)" }, { status: 400 });
       }
       dataToUpdate.assignedToId = body.assignedToId;
       dataToUpdate.assignedAt = body.assignedToId ? new Date() : null;
+      dataToUpdate.scheduledForDate = body.assignedToId ? body.scheduledForDate || today : null;
       dataToUpdate.status = body.assignedToId ? "ASSIGNED" : "UNASSIGNED";
       dataToUpdate.callingAssignmentPending = !!body.assignedToId;
       dataToUpdate.adminCallbackNote = body.assignedToId ? body.assignmentNote?.trim() || null : null;

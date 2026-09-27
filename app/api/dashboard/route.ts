@@ -13,7 +13,8 @@ export async function GET(req: NextRequest) {
     const end = new Date(start.getTime() + 86400000 - 1);
     if (user.role === "CALLING_EXECUTIVE") {
       const scope = { assignedToId: user.id, isDeleted: false };
-      const queueWhere = { ...scope, isDoNotCall: false, OR: [{ callingAssignmentPending: true }, { adminCallbackNote: { not: null } }, { callCount: 0, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING"] } }] };
+      const assignmentDue = { OR: [{ scheduledForDate: null }, { scheduledForDate: { isSet: false } }, { scheduledForDate: { lte: todayInIndia } }] };
+      const queueWhere = { ...scope, isDoNotCall: false, AND: [assignmentDue, { OR: [{ callingAssignmentPending: true }, { adminCallbackNote: { not: null } }, { callCount: 0, status: { in: ["ASSIGNED", "NEW", "CALL_PENDING"] } }] }] };
       const leadInclude = { calls: { orderBy: { callDate: "desc" as const }, take: 1, include: { executive: { select: { name: true } } } } };
       const [callsDone, interested, followUps, meetings, callsPending, adminCallbackLead, freshNextLead, dueFollowUps] = await Promise.all([
         prisma.call.count({ where: { executiveId: user.id, callDate: { gte: start, lte: end } } }),
@@ -21,7 +22,7 @@ export async function GET(req: NextRequest) {
         prisma.followUp.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
         prisma.meeting.count({ where: { executiveId: user.id, createdAt: { gte: start, lte: end } } }),
         prisma.lead.count({ where: queueWhere }),
-        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: "CALL_PENDING", adminCallbackNote: { not: null } }, orderBy: { adminCallbackAt: "asc" }, include: leadInclude }),
+        prisma.lead.findFirst({ where: { ...scope, isDoNotCall: false, status: "CALL_PENDING", adminCallbackNote: { not: null }, AND: [assignmentDue] }, orderBy: { adminCallbackAt: "asc" }, include: leadInclude }),
         // Imported Mongo records may have an unset (rather than explicit null)
         // follow-up field. Assigned leads must still appear in the home queue.
         prisma.lead.findFirst({ where: queueWhere, orderBy: [{ callCount: "asc" }, { createdAt: "asc" }], include: leadInclude }),
@@ -42,10 +43,10 @@ export async function GET(req: NextRequest) {
     const callDayStart = callsRange === "yesterday" ? new Date(start.getTime() - 86400000) : callsRange === "date" ? new Date(`${callsDate}T00:00:00+05:30`) : start;
     const callDateFilter = callsRange === "lifetime" ? {} : { callDate: { gte: callDayStart, lt: new Date(callDayStart.getTime() + 86400000) } };
     const [assignedToday, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
-      // Keep the day's assigned batch stable as reports arrive: a lead stays
-      // in this count after its first call is saved today, while Calls Today
-      // independently reflects the live number of reports.
-      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, OR: [{ callingAssignmentPending: true }, { calls: { some: { callDate: { gte: start, lte: end } } } }] } }),
+      // Scheduled future work must not inflate today's number. A lead set for
+      // today remains in the batch even after its call report is submitted.
+      // Legacy pending assignments without a schedule remain visible too.
+      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, OR: [{ scheduledForDate: todayInIndia }, { scheduledForDate: null, callingAssignmentPending: true }, { scheduledForDate: { isSet: false }, callingAssignmentPending: true }] } }),
       prisma.lead.count({ where: { isDeleted: false, status: "INTERESTED" } }),
       prisma.followUp.count({ where: { status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
       prisma.meeting.count({ where: { status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),

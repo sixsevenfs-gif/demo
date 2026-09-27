@@ -24,6 +24,8 @@ import {
 import { useApp } from "@/components/context/app-context";
 import { getTelLink, getWhatsAppLink } from "@/lib/phone";
 
+const indiaDate = (offset = 0) => new Date(Date.now() + (offset * 24 + 5.5) * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 export default function LeadsPage() {
   const router = useRouter();
   const { user, setQuickAddOpen, setAiImportOpen, setOutcomeModalLead, reloadKey } = useApp();
@@ -49,6 +51,7 @@ export default function LeadsPage() {
   const [bulkScriptChoice, setBulkScriptChoice] = useState("");
   const [bulkResourceChoice, setBulkResourceChoice] = useState("");
   const [bulkAssignmentNote, setBulkAssignmentNote] = useState("");
+  const [bulkScheduledForDate, setBulkScheduledForDate] = useState(indiaDate());
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -139,6 +142,7 @@ export default function LeadsPage() {
             leadIds: selectedIds,
             action: "ROUND_ROBIN",
             assignmentNote: bulkAssignmentNote,
+            scheduledForDate: bulkScheduledForDate,
           }),
         });
         const json = await res.json();
@@ -168,6 +172,7 @@ export default function LeadsPage() {
             action: bulkAction,
             executiveId: bulkTargetExec,
             assignmentNote: bulkAssignmentNote,
+            scheduledForDate: bulkScheduledForDate,
             ...(bulkScriptChoice ? { assignedScriptId: bulkScriptChoice === "__DEFAULT__" ? null : bulkScriptChoice } : {}),
             ...(bulkResourceChoice ? { assignedResourceId: bulkResourceChoice === "__DEFAULT__" ? null : bulkResourceChoice } : {}),
           }),
@@ -179,6 +184,7 @@ export default function LeadsPage() {
           setBulkScriptChoice("");
           setBulkResourceChoice("");
           setBulkAssignmentNote("");
+          setBulkScheduledForDate(indiaDate());
           fetchLeads();
         } else {
           alert(json.error || "Bulk action failed");
@@ -418,7 +424,14 @@ export default function LeadsPage() {
             )}
 
             {(bulkAction === "ASSIGN" || bulkAction === "ROUND_ROBIN") && (
-              <input aria-label="Reason for assigning again" value={bulkAssignmentNote} onChange={(e) => setBulkAssignmentNote(e.target.value)} placeholder="Why call again? Required for old leads" className="min-w-64 bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none" />
+              <>
+                <select aria-label="When should the executive see these leads" value={bulkScheduledForDate} onChange={(e) => setBulkScheduledForDate(e.target.value)} className="bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
+                  <option value={indiaDate()}>Today</option>
+                  <option value={indiaDate(1)}>Tomorrow</option>
+                  <option value={indiaDate(2)}>Day after tomorrow</option>
+                </select>
+                <input aria-label="Reason for assigning again" value={bulkAssignmentNote} onChange={(e) => setBulkAssignmentNote(e.target.value)} placeholder="Why call again? Required for old leads" className="min-w-64 bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none" />
+              </>
             )}
 
             <button

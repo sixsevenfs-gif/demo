@@ -24,6 +24,8 @@ import {
 import { useApp } from "@/components/context/app-context";
 import { getTelLink, getWhatsAppLink } from "@/lib/phone";
 
+const indiaDate = (offset = 0) => new Date(Date.now() + (offset * 24 + 5.5) * 60 * 60 * 1000).toISOString().slice(0, 10);
+
 export default function LeadDetailPage() {
   const params = useParams();
   const router = useRouter();
@@ -36,6 +38,7 @@ export default function LeadDetailPage() {
   const [statusUpdating, setStatusUpdating] = useState(false);
   const [scripts, setScripts] = useState<any[]>([]);
   const [resources, setResources] = useState<any[]>([]);
+  const [assignmentSchedule, setAssignmentSchedule] = useState(indiaDate());
 
   const isAdmin = user?.role === "ADMIN";
 
@@ -45,6 +48,7 @@ export default function LeadDetailPage() {
       if (res.ok) {
         const json = await res.json();
         setLead(json.lead);
+        if (json.lead.scheduledForDate) setAssignmentSchedule(json.lead.scheduledForDate);
       } else if (res.status === 403) {
         alert("Access Denied: You are not authorized to view this lead.");
         router.push("/leads");
@@ -135,7 +139,7 @@ export default function LeadDetailPage() {
       const response = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedToId: newExecId || null, assignmentNote }),
+        body: JSON.stringify({ assignedToId: newExecId || null, assignmentNote, scheduledForDate: assignmentSchedule }),
       });
       if (!response.ok) { const data = await response.json(); alert(data.error || "Could not reassign lead"); return; }
       fetchLeadDetails();
@@ -412,6 +416,17 @@ export default function LeadDetailPage() {
                 <option value="DO_NOT_CALL">Do Not Call</option>
               </select>
             </div>
+
+            {isAdmin && (
+              <div>
+                <label className="text-slate-400 block text-[11px] mb-1">Show this lead to executive</label>
+                <select value={assignmentSchedule} onChange={(e) => setAssignmentSchedule(e.target.value)} className="w-full bg-[#0D0F17] border border-[#1E2333] rounded-lg p-2 text-xs text-white focus:outline-none">
+                  <option value={indiaDate()}>Today</option>
+                  <option value={indiaDate(1)}>Tomorrow</option>
+                  <option value={indiaDate(2)}>Day after tomorrow</option>
+                </select>
+              </div>
+            )}
 
             {isAdmin && (
               <div>

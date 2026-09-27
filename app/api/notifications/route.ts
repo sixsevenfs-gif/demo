@@ -19,7 +19,7 @@ export async function GET() {
   const [receipts, replies, callbacks] = await Promise.all([
     prisma.noticeReceipt.findMany({ where: { userId: user.id, OR: [{ readAt: null }, { readAt: { isSet: false } }], notice: { OR: [{ expiresAt: null }, { expiresAt: { isSet: false } }, { expiresAt: { gt: new Date() } }] } }, include: { notice: true }, orderBy: { createdAt: "desc" }, take: 30 }),
     prisma.internalNote.findMany({ where: { senderId: user.id, adminReply: { not: null }, OR: [{ senderReplyReadAt: null }, { senderReplyReadAt: { isSet: false } }] }, orderBy: { updatedAt: "desc" }, take: 30 }),
-    prisma.lead.findMany({ where: { assignedToId: user.id, isDeleted: false, adminCallbackNote: { not: null }, OR: [{ adminCallbackSeenAt: null }, { adminCallbackSeenAt: { isSet: false } }] }, select: { id: true, businessName: true, adminCallbackNote: true, adminCallbackAt: true }, orderBy: { adminCallbackAt: "desc" }, take: 30 }),
+    prisma.lead.findMany({ where: { assignedToId: user.id, isDeleted: false, adminCallbackNote: { not: null }, OR: [{ scheduledForDate: null }, { scheduledForDate: { isSet: false } }, { scheduledForDate: { lte: new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10) } }], AND: [{ OR: [{ adminCallbackSeenAt: null }, { adminCallbackSeenAt: { isSet: false } }] }] }, select: { id: true, businessName: true, adminCallbackNote: true, adminCallbackAt: true }, orderBy: { adminCallbackAt: "desc" }, take: 30 }),
   ]);
   const notifications = [
     ...receipts.map((receipt) => ({ id: receipt.noticeId, kind: "ADMIN_NOTICE", title: receipt.notice.title, message: receipt.notice.message, createdAt: receipt.notice.createdAt, read: false, href: "/executive/important-notes" })),

@@ -232,6 +232,7 @@ export async function POST(req: NextRequest) {
         priority,
         assignedToId: finalAssignedTo,
         assignedAt: finalAssignedTo ? new Date() : null,
+        scheduledForDate: finalAssignedTo ? new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10) : null,
         callingAssignmentPending: !!finalAssignedTo,
         createdById: user?.id || null,
         notes,

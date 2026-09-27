@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
       assignedScriptId,
       assignedResourceId,
       assignmentNote,
+      scheduledForDate,
     } = await req.json();
 
     if (!Array.isArray(leadIds) || leadIds.length === 0) {
@@ -30,6 +31,10 @@ export async function POST(req: NextRequest) {
         { error: "No leads selected for bulk action" },
         { status: 400 }
       );
+    }
+    const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    if (scheduledForDate !== undefined && (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledForDate) || scheduledForDate < today)) {
+      return NextResponse.json({ error: "Choose today or a future assignment date" }, { status: 400 });
     }
 
     if (action === "ASSIGN" || action === "TOOLKIT") {
@@ -74,7 +79,7 @@ export async function POST(req: NextRequest) {
       const result = await prisma.lead.updateMany({
         where: { id: { in: leadIds }, isDeleted: false },
         data: {
-          ...(action === "ASSIGN" ? { assignedToId: executiveId, assignedAt: new Date(), status: "ASSIGNED", callingAssignmentPending: true, adminCallbackNote: assignmentNote?.trim() || null, adminCallbackAt: assignmentNote?.trim() ? new Date() : null, adminCallbackSeenAt: null, adminCallbackSourceCallId: null } : {}),
+          ...(action === "ASSIGN" ? { assignedToId: executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "ASSIGNED", callingAssignmentPending: true, adminCallbackNote: assignmentNote?.trim() || null, adminCallbackAt: assignmentNote?.trim() ? new Date() : null, adminCallbackSeenAt: null, adminCallbackSourceCallId: null } : {}),
           ...(assignedScriptId !== undefined ? { assignedScriptId } : {}),
           ...(assignedResourceId !== undefined ? { assignedResourceId } : {}),
         },
@@ -129,6 +134,7 @@ export async function POST(req: NextRequest) {
           data: {
             assignedToId: assignedExec.id,
             assignedAt: new Date(),
+            scheduledForDate: scheduledForDate || today,
             status: "ASSIGNED",
             callingAssignmentPending: true,
             adminCallbackNote: assignmentNote?.trim() || null,

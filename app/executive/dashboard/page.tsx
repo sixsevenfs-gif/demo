@@ -509,6 +509,9 @@ export default function ExecutiveDashboard() {
       )}
       {lead ? (
         <section className="rounded-2xl border border-indigo-500/30 bg-[#12141C] p-5 space-y-5">
+          {lead.scheduledForDate && lead.scheduledForDate < new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10) && (
+            <div className="rounded-xl border border-rose-500/50 bg-rose-500/10 p-3 text-sm font-bold text-rose-200">MISSED YESTERDAY · This lead was scheduled for {new Date(`${lead.scheduledForDate}T00:00:00+05:30`).toLocaleDateString("en-IN", { day: "numeric", month: "short" })}. Please call and update the result.</div>
+          )}
           <div className={`rounded-xl border p-4 ${data.callbackPreviousCall ? "border-amber-500/50 bg-amber-500/10" : "border-emerald-500/40 bg-emerald-500/10"}`}>
             <p className={`text-xs font-bold ${data.callbackPreviousCall ? "text-amber-300" : "text-emerald-300"}`}>{data.callbackPreviousCall ? "PREVIOUSLY CONTACTED · REASSIGNED" : "NEW LEAD · FIRST CALL"}</p>
             {data.callbackPreviousCall && (

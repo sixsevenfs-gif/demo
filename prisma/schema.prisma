@@ -69,6 +69,7 @@ model Lead {
   assignedToId    String?     @db.ObjectId
   assignedTo      User?       @relation("AssignedLeads", fields: [assignedToId], references: [id])
   assignedAt      DateTime?
+  scheduledForDate String?   // YYYY-MM-DD in Asia/Kolkata; null for legacy immediate assignments
   callingAssignmentPending Boolean @default(false)
   createdById     String?     @db.ObjectId
   createdBy       User?       @relation("CreatedLeads", fields: [createdById], references: [id])
@@ -104,6 +105,7 @@ model Lead {
   @@index([status])
   @@index([assignedToId])
   @@index([assignedAt])
+  @@index([scheduledForDate])
   @@index([nextFollowUpDate])
   @@index([createdAt])
 }
