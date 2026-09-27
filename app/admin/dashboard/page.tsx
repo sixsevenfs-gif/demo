@@ -5,6 +5,8 @@ import { RefreshCw } from "lucide-react";
 
 const labels: Record<string, string> = {
   assignedToday: "Today's Assigned Leads",
+  assignedTomorrow: "Tomorrow's Assigned Leads",
+  assignedDayAfterTomorrow: "Day After Tomorrow Assigned",
   callsToday: "Calls Today",
   connectedCalls: "Connected Calls",
   interestedLeads: "Interested Leads",
@@ -14,11 +16,14 @@ const labels: Record<string, string> = {
 };
 const cardTone = [
   "text-blue-300",
+  "text-sky-300",
+  "text-indigo-300",
   "text-emerald-300",
   "text-violet-300",
   "text-amber-300",
   "text-cyan-300",
   "text-fuchsia-300",
+  "text-slate-300",
   "text-slate-300",
 ];
 function when(value: string) {
@@ -182,7 +187,7 @@ export default function AdminDashboard() {
           </div>
         </div>
       </div>
-      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-7">
+      <div className="grid grid-cols-2 gap-3 md:grid-cols-4 xl:grid-cols-9">
         {Object.entries(data.summary).map(([key, value], index) => (
           <div
             key={key}

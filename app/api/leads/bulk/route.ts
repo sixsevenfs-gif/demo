@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
       assignedResourceId,
       assignmentNote,
       scheduledForDate,
+      replaceExistingAssignment,
     } = await req.json();
 
     if (!Array.isArray(leadIds) || leadIds.length === 0) {
@@ -61,6 +62,17 @@ export async function POST(req: NextRequest) {
       }
 
       if (action === "ASSIGN") {
+        const pendingAssignments = await prisma.lead.findMany({
+          where: { id: { in: leadIds }, isDeleted: false, callingAssignmentPending: true },
+          select: { id: true, businessName: true, scheduledForDate: true, assignedTo: { select: { name: true } } },
+        });
+        if (pendingAssignments.length > 0 && !replaceExistingAssignment) {
+          return NextResponse.json({
+            error: "One or more selected leads already have an unanswered assignment.",
+            code: "PENDING_ASSIGNMENTS_EXIST",
+            pendingAssignments,
+          }, { status: 409 });
+        }
         const previouslyCalled = await prisma.lead.count({ where: { id: { in: leadIds }, isDeleted: false, callCount: { gt: 0 } } });
         if (previouslyCalled && (!assignmentNote?.trim() || assignmentNote.trim().length < 5)) {
           return NextResponse.json({ error: "Write why previously called leads need another call (at least 5 characters)" }, { status: 400 });
@@ -103,6 +115,17 @@ export async function POST(req: NextRequest) {
     }
 
     if (action === "ROUND_ROBIN") {
+      const pendingAssignments = await prisma.lead.findMany({
+        where: { id: { in: leadIds }, isDeleted: false, callingAssignmentPending: true },
+        select: { id: true, businessName: true, scheduledForDate: true, assignedTo: { select: { name: true } } },
+      });
+      if (pendingAssignments.length > 0 && !replaceExistingAssignment) {
+        return NextResponse.json({
+          error: "One or more selected leads already have an unanswered assignment.",
+          code: "PENDING_ASSIGNMENTS_EXIST",
+          pendingAssignments,
+        }, { status: 409 });
+      }
       const previouslyCalled = await prisma.lead.count({ where: { id: { in: leadIds }, isDeleted: false, callCount: { gt: 0 } } });
       if (previouslyCalled && (!assignmentNote?.trim() || assignmentNote.trim().length < 5)) return NextResponse.json({ error: "Write why previously called leads need another call (at least 5 characters)" }, { status: 400 });
       // Get target executives

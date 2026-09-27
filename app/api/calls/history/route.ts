@@ -29,12 +29,19 @@ export async function GET(req: NextRequest) {
 export async function POST(req: NextRequest) {
   const user = await getCurrentUser();
   if (!user || user.role !== "ADMIN") return NextResponse.json({ error: "Admin authorization required" }, { status: 403 });
-  const { callId, note, scheduledForDate } = await req.json();
+  const { callId, note, scheduledForDate, replaceExistingAssignment } = await req.json();
   if (!callId || !note?.trim() || note.trim().length < 5) return NextResponse.json({ error: "Write a callback reason of at least 5 characters" }, { status: 400 });
   const today = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
   if (!/^\d{4}-\d{2}-\d{2}$/.test(scheduledForDate || today) || (scheduledForDate || today) < today) return NextResponse.json({ error: "Choose today or a future callback date" }, { status: 400 });
   const call = await prisma.call.findUnique({ where: { id: callId }, include: { lead: true, executive: { select: { name: true } } } });
   if (!call) return NextResponse.json({ error: "Call not found" }, { status: 404 });
+  if (call.lead.callingAssignmentPending && !replaceExistingAssignment) {
+    return NextResponse.json({
+      error: "This lead already has an unanswered assignment.",
+      code: "PENDING_ASSIGNMENTS_EXIST",
+      pendingAssignments: [{ id: call.lead.id, businessName: call.lead.businessName, scheduledForDate: call.lead.scheduledForDate, assignedTo: call.executive }],
+    }, { status: 409 });
+  }
   await prisma.$transaction([
     prisma.lead.update({ where: { id: call.leadId }, data: { assignedToId: call.executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "CALL_PENDING", callingAssignmentPending: true, adminCallbackNote: note.trim(), adminCallbackAt: new Date(), adminCallbackSeenAt: null, adminCallbackSourceCallId: call.id, nextFollowUpDate: new Date() } }),
     prisma.activity.create({ data: { leadId: call.leadId, userId: user.id, userName: user.name, type: "ADMIN_CALLBACK_ASSIGNED", description: `${user.name} asked ${call.executive.name} to call ${call.lead.businessName} again.`, metadata: JSON.stringify({ callId, reason: note.trim() }) } }),

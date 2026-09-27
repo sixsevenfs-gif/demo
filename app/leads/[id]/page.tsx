@@ -129,8 +129,8 @@ export default function LeadDetailPage() {
   };
 
   // Reassign Lead (Admin only)
-  const handleReassign = async (newExecId: string) => {
-    const assignmentNote = newExecId && lead.callCount > 0 ? window.prompt("Why should the executive call this client again? (required)") : "";
+  const handleReassign = async (newExecId: string, replaceExistingAssignment = false, existingNote?: string) => {
+    const assignmentNote = existingNote ?? (newExecId && lead.callCount > 0 ? window.prompt("Why should the executive call this client again? (required)") : "");
     if (newExecId && lead.callCount > 0 && (!assignmentNote || assignmentNote.trim().length < 5)) {
       alert("Write a reason of at least 5 characters to reassign a previously called lead.");
       return;
@@ -139,9 +139,17 @@ export default function LeadDetailPage() {
       const response = await fetch(`/api/leads/${lead.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ assignedToId: newExecId || null, assignmentNote, scheduledForDate: assignmentSchedule }),
+        body: JSON.stringify({ assignedToId: newExecId || null, assignmentNote, scheduledForDate: assignmentSchedule, replaceExistingAssignment }),
       });
-      if (!response.ok) { const data = await response.json(); alert(data.error || "Could not reassign lead"); return; }
+      if (!response.ok) {
+        const data = await response.json();
+        if (data.code === "PENDING_ASSIGNMENTS_EXIST" && window.confirm("This lead already has an unanswered assignment. Replace the previous assignment with this one?")) {
+          void handleReassign(newExecId, true, assignmentNote || "");
+          return;
+        }
+        alert(data.error || "Could not reassign lead");
+        return;
+      }
       fetchLeadDetails();
       triggerReload();
     } catch (err) {

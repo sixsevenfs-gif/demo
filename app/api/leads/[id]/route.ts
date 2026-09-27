@@ -149,6 +149,13 @@ export async function PATCH(
       if (body.assignedToId && (!/^\d{4}-\d{2}-\d{2}$/.test(body.scheduledForDate || today) || (body.scheduledForDate || today) < today)) {
         return NextResponse.json({ error: "Choose today or a future assignment date" }, { status: 400 });
       }
+      if (body.assignedToId && existing.callingAssignmentPending && !body.replaceExistingAssignment) {
+        return NextResponse.json({
+          error: "This lead already has an unanswered assignment.",
+          code: "PENDING_ASSIGNMENTS_EXIST",
+          pendingAssignments: [{ id: existing.id, businessName: existing.businessName, scheduledForDate: existing.scheduledForDate, assignedToId: existing.assignedToId }],
+        }, { status: 409 });
+      }
       if (body.assignedToId && existing.callCount > 0 && (!body.assignmentNote?.trim() || body.assignmentNote.trim().length < 5)) {
         return NextResponse.json({ error: "Write why this previously called lead needs another call (at least 5 characters)" }, { status: 400 });
       }

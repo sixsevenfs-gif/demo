@@ -9,6 +9,8 @@ export async function GET(req: NextRequest) {
     // Vercel runs in UTC. Build the day in India time so the home counters
     // reset at local midnight, matching the executive's Call History.
     const todayInIndia = new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10);
+    const tomorrowInIndia = new Date(Date.now() + 5.5 * 60 * 60 * 1000 + 86_400_000).toISOString().slice(0, 10);
+    const dayAfterTomorrowInIndia = new Date(Date.now() + 5.5 * 60 * 60 * 1000 + 172_800_000).toISOString().slice(0, 10);
     const start = new Date(`${todayInIndia}T00:00:00+05:30`);
     const end = new Date(start.getTime() + 86400000 - 1);
     if (user.role === "CALLING_EXECUTIVE") {
@@ -42,11 +44,13 @@ export async function GET(req: NextRequest) {
     }
     const callDayStart = callsRange === "yesterday" ? new Date(start.getTime() - 86400000) : callsRange === "date" ? new Date(`${callsDate}T00:00:00+05:30`) : start;
     const callDateFilter = callsRange === "lifetime" ? {} : { callDate: { gte: callDayStart, lt: new Date(callDayStart.getTime() + 86400000) } };
-    const [assignedToday, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
+    const [assignedToday, assignedTomorrow, assignedDayAfterTomorrow, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads, activity, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes] = await Promise.all([
       // Scheduled future work must not inflate today's number. A lead set for
       // today remains in the batch even after its call report is submitted.
       // Legacy pending assignments without a schedule remain visible too.
       prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, OR: [{ scheduledForDate: todayInIndia }, { scheduledForDate: null, callingAssignmentPending: true }, { scheduledForDate: { isSet: false }, callingAssignmentPending: true }] } }),
+      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, scheduledForDate: tomorrowInIndia } }),
+      prisma.lead.count({ where: { isDeleted: false, assignedToId: { not: null }, scheduledForDate: dayAfterTomorrowInIndia } }),
       prisma.lead.count({ where: { isDeleted: false, status: "INTERESTED" } }),
       prisma.followUp.count({ where: { status: "PENDING", scheduledAt: { gte: start, lte: end } } }),
       prisma.meeting.count({ where: { status: "BOOKED", scheduledAt: { gte: start, lte: end } } }),
@@ -70,6 +74,6 @@ export async function GET(req: NextRequest) {
     const connectedBusinessCalls = latestActivityByLead.filter(
       (call) => !["NO_ANSWER", "WRONG_NUMBER"].includes(call.outcome),
     ).length;
-    return NextResponse.json({ role: user.role, summary: { assignedToday, callsToday: latestActivityByLead.length, connectedCalls: connectedBusinessCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, callsRange, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
+    return NextResponse.json({ role: user.role, summary: { assignedToday, assignedTomorrow, assignedDayAfterTomorrow, callsToday: latestActivityByLead.length, connectedCalls: connectedBusinessCalls, interestedLeads, followUpsToday, meetingsBooked, unassignedLeads }, activity: latestActivityByLead, callsRange, followUps, interested, executiveStatus, recentProofs, notices, executiveNotes });
   } catch (error: any) { return NextResponse.json({ error: error.message || "Could not load dashboard" }, { status: 500 }); }
 }

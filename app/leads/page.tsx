@@ -130,7 +130,7 @@ export default function LeadsPage() {
   };
 
   // Bulk actions (Assign, Round-Robin, Status change, CSV export)
-  const handleExecuteBulk = async () => {
+  const handleExecuteBulk = async (replaceExistingAssignment = false) => {
     if (selectedIds.length === 0) return;
 
     if (bulkAction === "ROUND_ROBIN") {
@@ -143,6 +143,7 @@ export default function LeadsPage() {
             action: "ROUND_ROBIN",
             assignmentNote: bulkAssignmentNote,
             scheduledForDate: bulkScheduledForDate,
+            replaceExistingAssignment,
           }),
         });
         const json = await res.json();
@@ -150,6 +151,8 @@ export default function LeadsPage() {
           alert(json.message);
           setSelectedIds([]);
           fetchLeads();
+        } else if (json.code === "PENDING_ASSIGNMENTS_EXIST" && window.confirm(`${json.pendingAssignments?.length || "A"} selected lead already has an unanswered assignment. Replace the previous assignment with this one?`)) {
+          void handleExecuteBulk(true);
         } else {
           alert(json.error || "Bulk action failed");
         }
@@ -173,6 +176,7 @@ export default function LeadsPage() {
             executiveId: bulkTargetExec,
             assignmentNote: bulkAssignmentNote,
             scheduledForDate: bulkScheduledForDate,
+            replaceExistingAssignment,
             ...(bulkScriptChoice ? { assignedScriptId: bulkScriptChoice === "__DEFAULT__" ? null : bulkScriptChoice } : {}),
             ...(bulkResourceChoice ? { assignedResourceId: bulkResourceChoice === "__DEFAULT__" ? null : bulkResourceChoice } : {}),
           }),
@@ -186,6 +190,8 @@ export default function LeadsPage() {
           setBulkAssignmentNote("");
           setBulkScheduledForDate(indiaDate());
           fetchLeads();
+        } else if (json.code === "PENDING_ASSIGNMENTS_EXIST" && window.confirm(`${json.pendingAssignments?.length || "A"} selected lead already has an unanswered assignment. Replace the previous assignment with this one?`)) {
+          void handleExecuteBulk(true);
         } else {
           alert(json.error || "Bulk action failed");
         }
@@ -435,7 +441,7 @@ export default function LeadsPage() {
             )}
 
             <button
-              onClick={handleExecuteBulk}
+              onClick={() => void handleExecuteBulk()}
               className="px-3.5 py-1.5 bg-indigo-600 hover:bg-indigo-500 text-white font-bold rounded-lg text-xs transition-colors"
             >
               Apply
