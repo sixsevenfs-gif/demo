@@ -197,6 +197,22 @@ export default function ExecutiveDashboard() {
     setMessage("Call report saved successfully.");
     void load();
   }
+  async function skipLead() {
+    if (!data?.nextLead || saving) return;
+    const confirmed = window.confirm("Skip this lead for now? It will return only after all other assigned leads are completed.");
+    if (!confirmed) return;
+    setSaving(true);
+    const response = await fetch(`/api/leads/${data.nextLead.id}/skip`, { method: "POST" });
+    setSaving(false);
+    if (!response.ok) {
+      const result = await response.json();
+      setMessage(result.error || "Could not skip this lead.");
+      return;
+    }
+    resetCallForm();
+    setMessage("Lead skipped. It will return after the remaining assigned leads.");
+    void load();
+  }
   const CallProof = () => (
     <label className="block text-sm font-semibold">
       Call Log Screenshot *
@@ -559,6 +575,7 @@ export default function ExecutiveDashboard() {
               WhatsApp
             </a>
           </div>
+          <button type="button" onClick={() => void skipLead()} disabled={saving} className="w-full rounded-xl border border-amber-500/40 py-2 text-sm font-semibold text-amber-200 hover:bg-amber-500/10 disabled:opacity-50">Skip for now — show after remaining leads</button>
           {toolkit && <LeadToolkit lead={lead} toolkit={toolkit} refresh={load} />}
           <div>
             <p className="mb-2 text-sm font-semibold">Call Result *</p>

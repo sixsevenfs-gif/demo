@@ -245,7 +245,7 @@ export default function AdminDashboard() {
                         </span>
                       </td>
                       <td className="max-w-[190px] truncate text-slate-300">
-                        {item.clientConversationSummary || item.notes || "—"}
+                        {item.updates?.[0] ? <><span className="block">{item.clientConversationSummary || item.notes || "—"}</span><span className="mt-1 block text-xs text-amber-300">Updated: {item.updates[0].note}</span></> : (item.clientConversationSummary || item.notes || "—")}
                       </td>
                       <td className="flex gap-1 py-2">
                         {item.attachments.map((a: any) => (

@@ -164,6 +164,7 @@ export async function PATCH(
       dataToUpdate.scheduledForDate = body.assignedToId ? body.scheduledForDate || today : null;
       dataToUpdate.status = body.assignedToId ? "ASSIGNED" : "UNASSIGNED";
       dataToUpdate.callingAssignmentPending = !!body.assignedToId;
+      dataToUpdate.queueSkippedAt = null;
       dataToUpdate.adminCallbackNote = body.assignedToId ? body.assignmentNote?.trim() || null : null;
       dataToUpdate.adminCallbackAt = body.assignedToId && body.assignmentNote?.trim() ? new Date() : null;
       dataToUpdate.adminCallbackSeenAt = null;

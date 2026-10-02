@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       const result = await prisma.lead.updateMany({
         where: { id: { in: leadIds }, isDeleted: false },
         data: {
-          ...(action === "ASSIGN" ? { assignedToId: executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "ASSIGNED", callingAssignmentPending: true, adminCallbackNote: assignmentNote?.trim() || null, adminCallbackAt: assignmentNote?.trim() ? new Date() : null, adminCallbackSeenAt: null, adminCallbackSourceCallId: null } : {}),
+          ...(action === "ASSIGN" ? { assignedToId: executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "ASSIGNED", callingAssignmentPending: true, queueSkippedAt: null, adminCallbackNote: assignmentNote?.trim() || null, adminCallbackAt: assignmentNote?.trim() ? new Date() : null, adminCallbackSeenAt: null, adminCallbackSourceCallId: null } : {}),
           ...(assignedScriptId !== undefined ? { assignedScriptId } : {}),
           ...(assignedResourceId !== undefined ? { assignedResourceId } : {}),
         },
@@ -160,6 +160,7 @@ export async function POST(req: NextRequest) {
             scheduledForDate: scheduledForDate || today,
             status: "ASSIGNED",
             callingAssignmentPending: true,
+            queueSkippedAt: null,
             adminCallbackNote: assignmentNote?.trim() || null,
             adminCallbackAt: assignmentNote?.trim() ? new Date() : null,
             adminCallbackSeenAt: null,

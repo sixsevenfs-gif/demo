@@ -21,6 +21,7 @@ model User {
   assignedLeads Lead[]    @relation("AssignedLeads")
   createdLeads  Lead[]    @relation("CreatedLeads")
   calls         Call[]
+  callUpdates   CallUpdate[]
   attachments   Attachment[]
   followUps     FollowUp[]
   activities    Activity[]
@@ -71,6 +72,7 @@ model Lead {
   assignedAt      DateTime?
   scheduledForDate String?   // YYYY-MM-DD in Asia/Kolkata; null for legacy immediate assignments
   callingAssignmentPending Boolean @default(false)
+  queueSkippedAt   DateTime?
   createdById     String?     @db.ObjectId
   createdBy       User?       @relation("CreatedLeads", fields: [createdById], references: [id])
 
@@ -136,10 +138,24 @@ model Call {
   meetingTime   String?
   createdAt     DateTime  @default(now())
   attachments   Attachment[]
+  updates       CallUpdate[]
 
   @@index([leadId])
   @@index([executiveId])
   @@index([callDate])
+}
+
+model CallUpdate {
+  id          String   @id @default(auto()) @map("_id") @db.ObjectId
+  callId      String   @db.ObjectId
+  call        Call     @relation(fields: [callId], references: [id], onDelete: Cascade)
+  executiveId String   @db.ObjectId
+  executive   User     @relation(fields: [executiveId], references: [id])
+  note        String
+  createdAt   DateTime @default(now())
+
+  @@index([callId, createdAt])
+  @@index([executiveId])
 }
 
 model Attachment {

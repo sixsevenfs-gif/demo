@@ -20,7 +20,7 @@ export async function GET(req: NextRequest) {
   const total = await prisma.call.count({ where });
   const calls = await prisma.call.findMany({
     where,
-    include: { lead: { select: { id: true, businessName: true, phone: true, status: true, nextFollowUpDate: true, assignedToId: true, adminCallbackNote: true, adminCallbackAt: true } }, executive: { select: { id: true, name: true } }, attachments: { select: { id: true, type: true, filename: true } } },
+    include: { lead: { select: { id: true, businessName: true, phone: true, status: true, nextFollowUpDate: true, assignedToId: true, adminCallbackNote: true, adminCallbackAt: true } }, executive: { select: { id: true, name: true } }, attachments: { select: { id: true, type: true, filename: true } }, updates: { include: { executive: { select: { name: true } } }, orderBy: { createdAt: "desc" }, take: 10 } },
     orderBy: { callDate: "desc" }, skip: (page - 1) * pageSize, take: pageSize,
   });
   return NextResponse.json({ calls, total, page, hasMore: page * pageSize < total });
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
     }, { status: 409 });
   }
   await prisma.$transaction([
-    prisma.lead.update({ where: { id: call.leadId }, data: { assignedToId: call.executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "CALL_PENDING", callingAssignmentPending: true, adminCallbackNote: note.trim(), adminCallbackAt: new Date(), adminCallbackSeenAt: null, adminCallbackSourceCallId: call.id, nextFollowUpDate: new Date() } }),
+    prisma.lead.update({ where: { id: call.leadId }, data: { assignedToId: call.executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "CALL_PENDING", callingAssignmentPending: true, queueSkippedAt: null, adminCallbackNote: note.trim(), adminCallbackAt: new Date(), adminCallbackSeenAt: null, adminCallbackSourceCallId: call.id, nextFollowUpDate: new Date() } }),
     prisma.activity.create({ data: { leadId: call.leadId, userId: user.id, userName: user.name, type: "ADMIN_CALLBACK_ASSIGNED", description: `${user.name} asked ${call.executive.name} to call ${call.lead.businessName} again.`, metadata: JSON.stringify({ callId, reason: note.trim() }) } }),
   ]);
   return NextResponse.json({ success: true });

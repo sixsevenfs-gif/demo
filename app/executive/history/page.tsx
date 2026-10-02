@@ -18,6 +18,7 @@ type CallRecord = {
     status: string;
     adminCallbackNote?: string | null;
   };
+  updates?: { id: string; note: string; createdAt: string; executive?: { name: string } }[];
 };
 type DayStats = { date: string; calls: number; connected: number; interested: number; callbacks: number; meetings: number };
 type Stats = {
@@ -40,6 +41,9 @@ export default function ExecutiveHistory() {
   const [hasMore, setHasMore] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [editingCallId, setEditingCallId] = useState<string | null>(null);
+  const [updateNote, setUpdateNote] = useState("");
+  const [savingUpdate, setSavingUpdate] = useState(false);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -89,6 +93,16 @@ export default function ExecutiveHistory() {
   ];
   const heading = period === "lifetime" ? "All calls" : period === "today" ? "Today's calls" : period === "yesterday" ? "Yesterday's calls" : `Calls on ${selectedDate}`;
   const dayStats = period === "today" ? stats?.today : period === "yesterday" ? stats?.yesterday : stats?.selected;
+  const saveUpdate = async (callId: string) => {
+    if (updateNote.trim().length < 3) { setError("Write an update of at least 3 characters."); return; }
+    setSavingUpdate(true);
+    const response = await fetch(`/api/calls/${callId}/updates`, { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ note: updateNote }) });
+    setSavingUpdate(false);
+    if (!response.ok) { const result = await response.json(); setError(result.error || "Could not save update."); return; }
+    setEditingCallId(null);
+    setUpdateNote("");
+    void loadCalls(1);
+  };
 
   return <div className="mx-auto max-w-4xl">
     <h1 className="text-2xl font-bold">Call History</h1>
@@ -122,8 +136,10 @@ export default function ExecutiveHistory() {
       return <div key={call.id} className={`rounded-xl border p-4 ${pending ? "border-rose-500/45 bg-rose-500/5" : "border-[#1E2333] bg-[#12141C]"}`}>
         <div className="flex flex-col justify-between gap-3 sm:flex-row">
           <Link href={`/executive/leads/${call.lead.id}`} className="min-w-0"><div className="flex items-center gap-2"><b>{call.lead.businessName}</b><span className={`rounded-full px-2 py-0.5 text-[10px] font-bold ${pending ? "bg-rose-500 text-white" : "bg-[#272E44] text-slate-200"}`}>{call.outcome.replaceAll("_", " ")}</span></div><p className="mt-1 text-xs text-slate-400">{new Date(call.callDate).toLocaleString()} · {call.clientConversationSummary || call.notes || "No note"}</p><p className="mt-2 text-xs text-indigo-300">View full call timeline <ChevronRight className="inline w-3" /></p></Link>
-          {pending && <div className="shrink-0 sm:max-w-52"><p className="mb-2 text-xs text-rose-300">Admin asked you to call again: {call.lead.adminCallbackNote}</p><Link href={`/executive/dashboard?leadId=${call.lead.id}`} className="inline-flex rounded-lg bg-rose-500 px-3 py-2 text-xs font-bold text-white">Call &amp; update result</Link></div>}
+          <div className="flex shrink-0 flex-col items-start gap-2 sm:max-w-52">{pending && <><p className="text-xs text-rose-300">Admin asked you to call again: {call.lead.adminCallbackNote}</p><Link href={`/executive/dashboard?leadId=${call.lead.id}`} className="inline-flex rounded-lg bg-rose-500 px-3 py-2 text-xs font-bold text-white">Call &amp; update result</Link></>}<button type="button" onClick={() => { setEditingCallId(call.id); setUpdateNote(""); setError(""); }} className="rounded-lg border border-indigo-400/50 px-3 py-2 text-xs font-bold text-indigo-200">Add update</button></div>
         </div>
+        {call.updates?.length ? <div className="mt-3 space-y-1 border-t border-[#293042] pt-3 text-xs"><p className="font-semibold text-amber-300">Updates</p>{call.updates.map((update) => <p key={update.id} className="text-slate-300">{new Date(update.createdAt).toLocaleString()} · {update.note}</p>)}</div> : null}
+        {editingCallId === call.id && <div className="mt-3 border-t border-[#293042] pt-3"><textarea value={updateNote} onChange={(event) => setUpdateNote(event.target.value)} placeholder="Add a later update about this client…" rows={3} className="w-full rounded-lg border border-[#293042] bg-[#0D0F17] p-2 text-sm"/><div className="mt-2 flex gap-2"><button type="button" disabled={savingUpdate} onClick={() => void saveUpdate(call.id)} className="rounded-lg bg-indigo-500 px-3 py-2 text-xs font-bold text-white disabled:opacity-50">Save update</button><button type="button" onClick={() => setEditingCallId(null)} className="px-3 py-2 text-xs text-slate-400">Cancel</button></div></div>}
       </div>;
     }) : !loading && !error && (period === "lifetime" || activeDate) ? <p className="rounded-xl border border-[#1E2333] p-6 text-slate-400">No calls recorded for {heading.toLowerCase()}.</p> : null}</div>
     {(loading || (period !== "lifetime" && !activeDate)) && <p className="mt-4 text-sm text-slate-400">Loading calls…</p>}
