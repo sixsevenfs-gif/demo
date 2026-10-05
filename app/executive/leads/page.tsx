@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
+import { getWhatsAppLink } from "@/lib/phone";
+import { getWhatsAppLink } from "@/lib/phone";
 
 export default function MyLeads() {
   const [leads, setLeads] = useState<any[]>([]);
@@ -74,7 +76,7 @@ export default function MyLeads() {
                   className="rounded-lg border border-emerald-500/50 px-3 py-2 text-sm text-emerald-300"
                   target="_blank"
                   rel="noreferrer"
-                  href={`https://wa.me/${lead.normalizedPhone}`}
+                  href={getWhatsAppLink(lead.normalizedPhone)}
                 >
                   WhatsApp
                 </a>

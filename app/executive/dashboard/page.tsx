@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react";
 import { useApp } from "@/components/context/app-context";
 import { LeadToolkit } from "@/components/executive/lead-toolkit";
+import { getWhatsAppLink } from "@/lib/phone";
 
 const outcomes = [
   ["INTERESTED", "Interested"],
@@ -573,7 +574,7 @@ export default function ExecutiveDashboard() {
               Call {lead.phone}
             </a>
             <a
-              href={`https://wa.me/${lead.normalizedPhone}`}
+              href={getWhatsAppLink(lead.normalizedPhone)}
               target="_blank"
               className="rounded-xl border border-emerald-500/50 py-3 text-center font-bold text-emerald-300"
             >
