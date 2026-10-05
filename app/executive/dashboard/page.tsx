@@ -164,38 +164,43 @@ export default function ExecutiveDashboard() {
     if (!data?.nextLead || saving) return;
     setSaving(true);
     setMessage("");
-    const form = new FormData();
-    const values: Record<string, string> = {
-      leadId: data.nextLead.id,
-      outcome,
-      summary,
-      outcomeReason: reason,
-      followUpRequired: String(followUp),
-      followUpDate: followDate,
-      followUpTime: followTime,
-      followUpNote: followNote,
-      meetingNote,
-      meetingDate,
-      meetingTime,
-      whatsappPerformed: String(whatsapp),
-      whatsappSentType:
-        outcome === "INTERESTED" && whatsapp ? "Website Demo" : whatsappType,
-      whatsappNote,
-      demoSent: String(demoSent),
-    };
-    Object.entries(values).forEach(([k, v]) => form.set(k, v));
-    if (callLog) form.set("callLog", callLog);
-    if (whatsappProof) form.set("whatsappProof", whatsappProof);
-    const res = await fetch("/api/calls", { method: "POST", body: form });
-    const result = await res.json();
-    setSaving(false);
-    if (!res.ok) {
-      setMessage(result.error || "Could not save call result.");
-      return;
+    try {
+      const form = new FormData();
+      const values: Record<string, string> = {
+        leadId: data.nextLead.id,
+        outcome,
+        summary,
+        outcomeReason: reason,
+        followUpRequired: String(followUp),
+        followUpDate: followDate,
+        followUpTime: followTime,
+        followUpNote: followNote,
+        meetingNote,
+        meetingDate,
+        meetingTime,
+        whatsappPerformed: String(whatsapp),
+        whatsappSentType:
+          outcome === "INTERESTED" && whatsapp ? "Website Demo" : whatsappType,
+        whatsappNote,
+        demoSent: String(demoSent),
+      };
+      Object.entries(values).forEach(([k, v]) => form.set(k, v));
+      if (callLog) form.set("callLog", callLog);
+      if (whatsappProof) form.set("whatsappProof", whatsappProof);
+      const res = await fetch("/api/calls", { method: "POST", body: form });
+      const result = await res.json();
+      if (!res.ok) {
+        setMessage(result.error || "Could not save call result.");
+        return;
+      }
+      resetCallForm();
+      setMessage("Call report saved successfully.");
+      void load();
+    } catch {
+      setMessage("Could not save call result. Check your connection and try again.");
+    } finally {
+      setSaving(false);
     }
-    resetCallForm();
-    setMessage("Call report saved successfully.");
-    void load();
   }
   async function skipLead() {
     if (!data?.nextLead || saving) return;
