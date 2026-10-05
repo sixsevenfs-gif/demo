@@ -385,7 +385,7 @@ export default function ExecutiveDashboard() {
           {Summary({ placeholder: "What did the client say?" })}
           {common}
           <label className="block text-sm font-semibold">
-            Meeting note *
+            Meeting note (optional)
             <textarea
               value={meetingNote}
               onChange={(e) => setMeetingNote(e.target.value)}
