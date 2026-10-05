@@ -62,6 +62,31 @@ const wrongReasons = [
   "Other",
 ];
 
+async function prepareEvidence(file: File): Promise<File> {
+  if (file.size <= 1.5 * 1024 * 1024 && ["image/jpeg", "image/png", "image/webp"].includes(file.type)) return file;
+
+  const url = URL.createObjectURL(file);
+  try {
+    const image = new Image();
+    image.src = url;
+    await image.decode();
+    const scale = Math.min(1, 1600 / Math.max(image.naturalWidth, image.naturalHeight));
+    const canvas = document.createElement("canvas");
+    canvas.width = Math.round(image.naturalWidth * scale);
+    canvas.height = Math.round(image.naturalHeight * scale);
+    const context = canvas.getContext("2d");
+    if (!context) return file;
+    context.drawImage(image, 0, 0, canvas.width, canvas.height);
+    const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", 0.78));
+    if (!blob || blob.size >= file.size) return file;
+    return new File([blob], file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: Date.now() });
+  } catch {
+    return file;
+  } finally {
+    URL.revokeObjectURL(url);
+  }
+}
+
 export default function ExecutiveDashboard() {
   const { user, isLoading } = useApp();
   const [data, setData] = useState<any>();
@@ -228,8 +253,8 @@ export default function ExecutiveDashboard() {
       </span>
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={(e) => setCallLog(e.target.files?.[0] || null)}
+        accept="image/*"
+        onChange={async (e) => setCallLog(e.target.files?.[0] ? await prepareEvidence(e.target.files[0]) : null)}
         className={`${field} mt-2`}
       />
       {callLog && (
@@ -291,8 +316,8 @@ export default function ExecutiveDashboard() {
       WhatsApp Screenshot *
       <input
         type="file"
-        accept="image/jpeg,image/png,image/webp"
-        onChange={(e) => setWhatsappProof(e.target.files?.[0] || null)}
+        accept="image/*"
+        onChange={async (e) => setWhatsappProof(e.target.files?.[0] ? await prepareEvidence(e.target.files[0]) : null)}
         className={`${field} mt-2`}
       />
     </label>

@@ -4,7 +4,7 @@ import { getCurrentUser } from "@/lib/auth";
 import { uploadEvidence } from "@/lib/evidence-store";
 
 const OUTCOMES = new Set(["INTERESTED", "CALL_LATER", "NO_ANSWER", "NOT_INTERESTED", "WRONG_NUMBER"]);
-const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp"]);
+const IMAGE_TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/heic", "image/heif"]);
 const MAX_FILE_BYTES = 8 * 1024 * 1024;
 
 function text(form: FormData, key: string) { return String(form.get(key) || "").trim(); }
@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
     if (needsSummary && summary.length < 15) return NextResponse.json({ error: "Write a useful client conversation summary (at least 15 characters)" }, { status: 400 });
     if (outcome === "WRONG_NUMBER" && !outcomeReason) return NextResponse.json({ error: "Select what happened with this number" }, { status: 400 });
     if (outcome === "NOT_INTERESTED" && (!outcomeReason || summary.length < 15)) return NextResponse.json({ error: "Select a reason and write what the client said" }, { status: 400 });
-    if (!validEvidence(callLog)) return NextResponse.json({ error: "A call-log screenshot (JPG, PNG or WebP, max 8 MB) is required" }, { status: 400 });
+    if (!validEvidence(callLog)) return NextResponse.json({ error: "A call-log screenshot (JPG, PNG, WebP or HEIC, max 8 MB) is required" }, { status: 400 });
     if (whatsappPerformed) {
       if (!validEvidence(whatsappProof)) return NextResponse.json({ error: "A WhatsApp screenshot is required for this result" }, { status: 400 });
       if (!whatsappSentType) return NextResponse.json({ error: "Select what was sent on WhatsApp" }, { status: 400 });
