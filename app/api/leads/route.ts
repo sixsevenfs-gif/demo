@@ -158,6 +158,10 @@ export async function POST(req: NextRequest) {
       status = "NEW",
       priority = "NORMAL",
       assignedToId,
+      assignedScriptId,
+      assignedResourceId,
+      noScript,
+      noLink,
       notes,
       tags,
     } = body;
@@ -171,6 +175,15 @@ export async function POST(req: NextRequest) {
 
     const cleanPhone = phone || "";
     const normalized = normalizePhoneNumber(cleanPhone);
+
+    if (assignedScriptId) {
+      const script = await prisma.callingScript.findFirst({ where: { id: assignedScriptId, status: "ACTIVE" }, select: { id: true } });
+      if (!script) return NextResponse.json({ error: "Choose an active script" }, { status: 400 });
+    }
+    if (assignedResourceId) {
+      const resource = await prisma.resource.findFirst({ where: { id: assignedResourceId, status: "ACTIVE" }, select: { id: true } });
+      if (!resource) return NextResponse.json({ error: "Choose an active link" }, { status: 400 });
+    }
 
     // Duplicate Check
     if (normalized && normalized.length >= 5) {
@@ -231,6 +244,10 @@ export async function POST(req: NextRequest) {
         status: finalAssignedTo ? (status === "NEW" ? "ASSIGNED" : status) : "UNASSIGNED",
         priority,
         assignedToId: finalAssignedTo,
+        assignedScriptId: noScript ? null : assignedScriptId || null,
+        assignedResourceId: noLink ? null : assignedResourceId || null,
+        noScript: !!noScript,
+        noLink: !!noLink,
         assignedAt: finalAssignedTo ? new Date() : null,
         scheduledForDate: finalAssignedTo ? new Date(Date.now() + 5.5 * 60 * 60 * 1000).toISOString().slice(0, 10) : null,
         callingAssignmentPending: !!finalAssignedTo,

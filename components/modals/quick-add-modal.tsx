@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { X, Sparkles, AlertCircle, Phone, Building2, User, MapPin, Tag } from "lucide-react";
 import { useApp } from "../context/app-context";
 import { normalizePhoneNumber } from "@/lib/phone";
@@ -23,12 +23,24 @@ export function QuickAddModal() {
   const [address, setAddress] = useState("");
   const [assignedToId, setAssignedToId] = useState("");
   const [priority, setPriority] = useState("NORMAL");
+  const [assignedScriptId, setAssignedScriptId] = useState("");
+  const [assignedResourceId, setAssignedResourceId] = useState("");
+  const [scripts, setScripts] = useState<any[]>([]);
+  const [resources, setResources] = useState<any[]>([]);
   const [quickPasteText, setQuickPasteText] = useState("");
   const [showPasteBox, setShowPasteBox] = useState(false);
 
   const [isChecking, setIsChecking] = useState(false);
   const [duplicateAlert, setDuplicateAlert] = useState<any | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+
+  useEffect(() => {
+    if (!isQuickAddOpen || user?.role !== "ADMIN") return;
+    void Promise.all([fetch("/api/scripts"), fetch("/api/resources")]).then(async ([scriptResponse, resourceResponse]) => {
+      if (scriptResponse.ok) setScripts((await scriptResponse.json()).scripts || []);
+      if (resourceResponse.ok) setResources((await resourceResponse.json()).resources || []);
+    });
+  }, [isQuickAddOpen, user?.role]);
 
   if (!isQuickAddOpen) return null;
 
@@ -39,6 +51,8 @@ export function QuickAddModal() {
     setPhone("");
     setContactPerson("");
     setAddress("");
+    setAssignedScriptId("");
+    setAssignedResourceId("");
   };
 
   // Check phone duplicate on blur or change
@@ -105,6 +119,10 @@ export function QuickAddModal() {
           city,
           address,
           priority,
+          assignedScriptId: assignedScriptId && assignedScriptId !== "__NONE__" ? assignedScriptId : null,
+          assignedResourceId: assignedResourceId && assignedResourceId !== "__NONE__" ? assignedResourceId : null,
+          noScript: assignedScriptId === "__NONE__",
+          noLink: assignedResourceId === "__NONE__",
           assignedToId: assignedToId || (user?.role === "CALLING_EXECUTIVE" ? user.id : null),
           allowDuplicate: forceAllow,
         }),
@@ -348,6 +366,27 @@ export function QuickAddModal() {
                     </option>
                   ))}
               </select>
+            </div>
+          )}
+
+          {user?.role === "ADMIN" && (
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">Script</label>
+                <select value={assignedScriptId} onChange={(e) => setAssignedScriptId(e.target.value)} className="w-full bg-[#0B0D14] border border-[#1E2333] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                  <option value="">Use category default</option>
+                  <option value="__NONE__">No Script</option>
+                  {scripts.filter((script) => script.status === "ACTIVE").map((script) => <option key={script.id} value={script.id}>{script.name}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="block text-[11px] font-medium text-slate-400 mb-1">Link</label>
+                <select value={assignedResourceId} onChange={(e) => setAssignedResourceId(e.target.value)} className="w-full bg-[#0B0D14] border border-[#1E2333] rounded-lg px-3 py-2 text-xs text-white focus:outline-none focus:border-indigo-500">
+                  <option value="">Use category links</option>
+                  <option value="__NONE__">No Link</option>
+                  {resources.filter((resource) => resource.status === "ACTIVE" && resource.url).map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
+                </select>
+              </div>
             </div>
           )}
 
