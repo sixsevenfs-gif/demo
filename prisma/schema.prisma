@@ -98,6 +98,8 @@ model Lead {
   assignedScriptId String? @db.ObjectId
   assignedScript   CallingScript? @relation("LeadScript", fields: [assignedScriptId], references: [id])
   assignedResourceId String? @db.ObjectId
+  noScript         Boolean     @default(false)
+  noLink           Boolean     @default(false)
   resourceUsages   ResourceUsage[]
 
   createdAt       DateTime    @default(now())

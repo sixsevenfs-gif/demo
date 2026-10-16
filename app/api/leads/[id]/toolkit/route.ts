@@ -16,15 +16,15 @@ export async function GET(req: NextRequest, { params }: { params: { id: string }
   if (!lead) return NextResponse.json({ error: "Lead not found or unavailable" }, { status: 404 });
   const activeScripts = await prisma.callingScript.findMany({ where: { status: "ACTIVE" }, include: { objections: { orderBy: { position: "asc" } } } });
   const matchedScripts = activeScripts.filter((item) => categoryMatches(item.category, lead.category));
-  const script = lead.assignedScriptId
+  const script = lead.noScript ? null : lead.assignedScriptId
     ? lead.assignedScript?.status === "ACTIVE" ? lead.assignedScript : null
     : matchedScripts.sort((a, b) => Number(b.isDefaultForCategory) - Number(a.isDefaultForCategory) || categoryMatchScore(b.category, lead.category) - categoryMatchScore(a.category, lead.category))[0] || activeScripts.find((item) => item.category.toLowerCase() === "general business" && item.isDefaultForCategory);
-  const resources = lead.assignedResourceId
+  const resources = lead.noLink ? [] : lead.assignedResourceId
     ? await prisma.resource.findMany({ where: { id: lead.assignedResourceId, status: "ACTIVE" } })
     : (await prisma.resource.findMany({ where: { status: "ACTIVE" }, orderBy: [{ isDefault: "desc" }, { updatedAt: "desc" }] }))
         .filter((item) => item.category.toLowerCase() === "general" || categoryMatches(item.category, lead.category))
         .sort((a, b) => categoryMatchScore(b.category, lead.category) - categoryMatchScore(a.category, lead.category));
-  return NextResponse.json({ script, scriptSource: lead.assignedScriptId ? "Assigned by Admin" : script ? (matchedScripts.length ? "Category default" : "General fallback") : null, resources, resourceSource: lead.assignedResourceId ? "Assigned by Admin" : "Category recommendations" });
+  return NextResponse.json({ script, scriptSource: lead.noScript ? "No Script" : lead.assignedScriptId ? "Assigned by Admin" : script ? (matchedScripts.length ? "Category default" : "General fallback") : null, resources, resourceSource: lead.noLink ? "No Link" : lead.assignedResourceId ? "Assigned by Admin" : "Category recommendations" });
 }
 export async function POST(req: NextRequest, { params }: { params: { id: string } }) {
   const { user, lead } = await permitted(params.id);

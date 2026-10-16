@@ -75,10 +75,12 @@ export default function LeadDetailPage() {
   }, [isAdmin]);
 
   const handleToolkitChange = async (field: "assignedScriptId" | "assignedResourceId", value: string) => {
+    const isScript = field === "assignedScriptId";
+    const disable = value === "__NONE__";
     const response = await fetch(`/api/leads/${lead.id}`, {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ [field]: value || null }),
+      body: JSON.stringify({ [field]: value && value !== "__NONE__" ? value : null, [isScript ? "noScript" : "noLink"]: disable }),
     });
     if (!response.ok) {
       const data = await response.json();
@@ -464,11 +466,12 @@ export default function LeadDetailPage() {
                   Script override
                 </label>
                 <select
-                  value={lead.assignedScriptId || ""}
+                  value={lead.noScript ? "__NONE__" : lead.assignedScriptId || ""}
                   onChange={(e) => void handleToolkitChange("assignedScriptId", e.target.value)}
                   className="w-full bg-[#0D0F17] border border-[#1E2333] rounded-lg p-2 text-xs text-white focus:outline-none"
                 >
                   <option value="">Use category default</option>
+                  <option value="__NONE__">No Script</option>
                   {scripts.filter((script) => script.status === "ACTIVE").map((script) => (
                     <option key={script.id} value={script.id}>{script.name} ({script.category})</option>
                   ))}
@@ -480,11 +483,12 @@ export default function LeadDetailPage() {
               <div>
                 <label className="text-slate-400 block text-[11px] mb-1">Link for this lead</label>
                 <select
-                  value={lead.assignedResourceId || ""}
+                  value={lead.noLink ? "__NONE__" : lead.assignedResourceId || ""}
                   onChange={(e) => void handleToolkitChange("assignedResourceId", e.target.value)}
                   className="w-full bg-[#0D0F17] border border-[#1E2333] rounded-lg p-2 text-xs text-white focus:outline-none"
                 >
                   <option value="">Use category links</option>
+                  <option value="__NONE__">No Link</option>
                   {resources.filter((resource) => resource.status === "ACTIVE" && resource.url).map((resource) => (
                     <option key={resource.id} value={resource.id}>{resource.name}</option>
                   ))}

@@ -165,7 +165,7 @@ export default function LeadsPage() {
     if (bulkAction === "ASSIGN" || bulkAction === "TOOLKIT") {
       if (bulkAction === "ASSIGN" && !bulkTargetExec) return alert("Choose an executive first.");
       if (bulkAction === "ASSIGN" && selectedIds.some((id) => (leads.find((lead) => lead.id === id)?.callCount || 0) > 0) && bulkAssignmentNote.trim().length < 5) return alert("Write why these previously called leads need another call.");
-      if (bulkAction === "TOOLKIT" && !bulkScriptChoice && !bulkResourceChoice) return alert("Choose a script or link first.");
+      if (bulkAction === "TOOLKIT" && !bulkScriptChoice && !bulkResourceChoice) return alert("Choose a script, link, or No option first.");
       try {
         const res = await fetch("/api/leads/bulk", {
           method: "POST",
@@ -177,8 +177,8 @@ export default function LeadsPage() {
             assignmentNote: bulkAssignmentNote,
             scheduledForDate: bulkScheduledForDate,
             replaceExistingAssignment,
-            ...(bulkScriptChoice ? { assignedScriptId: bulkScriptChoice === "__DEFAULT__" ? null : bulkScriptChoice } : {}),
-            ...(bulkResourceChoice ? { assignedResourceId: bulkResourceChoice === "__DEFAULT__" ? null : bulkResourceChoice } : {}),
+            ...(bulkScriptChoice ? { assignedScriptId: bulkScriptChoice === "__DEFAULT__" || bulkScriptChoice === "__NONE__" ? null : bulkScriptChoice, noScript: bulkScriptChoice === "__NONE__" } : {}),
+            ...(bulkResourceChoice ? { assignedResourceId: bulkResourceChoice === "__DEFAULT__" || bulkResourceChoice === "__NONE__" ? null : bulkResourceChoice, noLink: bulkResourceChoice === "__NONE__" } : {}),
           }),
         });
         const json = await res.json();
@@ -419,11 +419,13 @@ export default function LeadsPage() {
                 <select aria-label="Script for selected leads" value={bulkScriptChoice} onChange={(e) => setBulkScriptChoice(e.target.value)} className="bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
                   <option value="">Keep current script</option>
                   <option value="__DEFAULT__">Use category default script</option>
+                  <option value="__NONE__">No Script</option>
                   {scripts.filter((script) => script.status === "ACTIVE").map((script) => <option key={script.id} value={script.id}>{script.name} ({script.category})</option>)}
                 </select>
                 <select aria-label="Link for selected leads" value={bulkResourceChoice} onChange={(e) => setBulkResourceChoice(e.target.value)} className="bg-[#12141C] border border-[#272E44] text-xs text-white rounded-lg px-3 py-1.5 focus:outline-none">
                   <option value="">Keep current link</option>
                   <option value="__DEFAULT__">Use category links</option>
+                  <option value="__NONE__">No Link</option>
                   {resources.filter((resource) => resource.status === "ACTIVE" && resource.url).map((resource) => <option key={resource.id} value={resource.id}>{resource.name}</option>)}
                 </select>
               </>

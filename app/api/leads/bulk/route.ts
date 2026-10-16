@@ -22,6 +22,8 @@ export async function POST(req: NextRequest) {
       tag,
       assignedScriptId,
       assignedResourceId,
+      noScript,
+      noLink,
       assignmentNote,
       scheduledForDate,
       replaceExistingAssignment,
@@ -46,7 +48,7 @@ export async function POST(req: NextRequest) {
         );
       }
 
-      if (action === "TOOLKIT" && assignedScriptId === undefined && assignedResourceId === undefined) {
+      if (action === "TOOLKIT" && assignedScriptId === undefined && assignedResourceId === undefined && noScript === undefined && noLink === undefined) {
         return NextResponse.json({ error: "Choose a script or link to assign" }, { status: 400 });
       }
 
@@ -94,6 +96,8 @@ export async function POST(req: NextRequest) {
           ...(action === "ASSIGN" ? { assignedToId: executiveId, assignedAt: new Date(), scheduledForDate: scheduledForDate || today, status: "ASSIGNED", callingAssignmentPending: true, queueSkippedAt: null, adminCallbackNote: assignmentNote?.trim() || null, adminCallbackAt: assignmentNote?.trim() ? new Date() : null, adminCallbackSeenAt: null, adminCallbackSourceCallId: null } : {}),
           ...(assignedScriptId !== undefined ? { assignedScriptId } : {}),
           ...(assignedResourceId !== undefined ? { assignedResourceId } : {}),
+          ...(noScript !== undefined ? { noScript, ...(noScript ? { assignedScriptId: null } : {}) } : {}),
+          ...(noLink !== undefined ? { noLink, ...(noLink ? { assignedResourceId: null } : {}) } : {}),
         },
       });
 

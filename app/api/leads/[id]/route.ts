@@ -117,6 +117,8 @@ export async function PATCH(
       "isDoNotCall",
       "assignedScriptId",
       "assignedResourceId",
+      "noScript",
+      "noLink",
     ];
 
     for (const field of allowedFields) {
