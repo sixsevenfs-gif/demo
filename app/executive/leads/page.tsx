@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { useCallback, useEffect, useState } from "react";
 import { getWhatsAppLink } from "@/lib/phone";
-import { getWhatsAppLink } from "@/lib/phone";
 
 export default function MyLeads() {
   const [leads, setLeads] = useState<any[]>([]);
